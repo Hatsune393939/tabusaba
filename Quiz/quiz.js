@@ -9,7 +9,6 @@
 
   const state = {
     user: null,
-    difficulty: 3,
     tags: [],
     alts: [],              // [{display, reading}]
     manualAccepted: [],    // 自分で追加した受理表記
@@ -139,20 +138,6 @@
     $("add-alt").disabled = state.alts.length >= Q.ALT_MAX;
   }
 
-  function renderDifficulty() {
-    const box = $("difficulty");
-    box.textContent = "";
-    for (let i = 1; i <= 5; i++) {
-      const b = document.createElement("button");
-      b.type = "button";
-      b.textContent = i;
-      b.setAttribute("aria-pressed", String(i === state.difficulty));
-      b.setAttribute("aria-label", `難易度${i}`);
-      b.addEventListener("click", () => { state.difficulty = i; renderDifficulty(); });
-      box.appendChild(b);
-    }
-  }
-
   function renderCount() {
     const n = [...$("question").value].length;
     const el = $("q-count");
@@ -206,7 +191,7 @@
       box.append(t, out);
     } else {
       const t = document.createElement("div");
-      t.innerHTML = `問題を投稿するにはログインしてください。<div class="hint">ゲーム内で /link したDiscordアカウントを使います。</div>`;
+      t.innerHTML = `問題を投稿するにはログインしてください。<div class="hint">ゲーム内で /mclink したDiscordアカウントを使います。</div>`;
       const a = document.createElement("a");
       a.className = "btn primary"; a.textContent = "Discordでログイン";
       a.href = `${API}/auth/login?redirect=${encodeURIComponent(location.href)}`;
@@ -236,7 +221,6 @@
     return {
       genre: $("genre").value,
       tags: state.tags,
-      difficulty: state.difficulty,
       question: $("question").value.trim(),
       answer: { display: $("ans-display").value.trim(), reading: $("ans-reading").value.trim() },
       alternatives: state.alts
@@ -286,10 +270,10 @@
   }
 
   function resetAll() {
-    state.difficulty = 3; state.tags = []; state.alts = [];
+    state.tags = []; state.alts = [];
     state.manualAccepted = []; state.removedAuto.clear();
     $("form-error").textContent = "";
-    setTimeout(() => { renderDifficulty(); renderTags(); renderAlts(); renderAccepted(); renderCount(); playPreview(); });
+    setTimeout(() => { renderTags(); renderAlts(); renderAccepted(); renderCount(); playPreview(); });
   }
 
   // ---- 初期化 ----
@@ -303,6 +287,7 @@
   wk.bind($("ans-reading"), { IMEMode: "toHiragana" });
   ["ans-display", "ans-reading"].forEach((id) => $(id).addEventListener("input", renderAccepted));
   $("question").addEventListener("input", renderCount);
+  $("question").setAttribute("maxlength", Q.QUESTION_MAX);
   $("question").addEventListener("change", playPreview);
   $("preview-btn").addEventListener("click", playPreview);
   $("add-alt").addEventListener("click", () => { state.alts.push({ display: "", reading: "" }); renderAlts(); });
@@ -342,6 +327,6 @@
     window.scrollTo(0, 0);
   });
 
-  renderDifficulty(); renderTags(); renderAlts(); renderAccepted(); renderCount(); playPreview();
+  renderTags(); renderAlts(); renderAccepted(); renderCount(); playPreview();
   loadUser();
 })();

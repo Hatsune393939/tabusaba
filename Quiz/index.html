@@ -5,61 +5,51 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>早押しクイズ 問題作成｜たぶ鯖</title>
 <link rel="icon" type="image/png" href="../Main/icon.png">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=DotGothic16&family=Zen+Kaku+Gothic+New:wght@400;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="../Main/style.css">
 <script src="https://cdn.jsdelivr.net/npm/wanakana@5.3.1/wanakana.min.js"></script>
 <script src="../Main/config.js"></script>
 </head>
 <body>
 <div class="wrap">
-  <div class="topbar"><a href="../Main/"><img class="px" src="../Main/icon.png" alt="" width="32" height="32">ミニゲームサーバー「たぶ鯖」</a></div>
+  <a class="back" href="../Main/"><img class="pixel" src="../Main/icon.png" alt="" width="22" height="22">たぶ鯖トップに戻る</a>
 
   <div class="page-head">
     <h1>早押しクイズ 問題作成</h1>
     <p class="lead">作った問題は早押しクイズ大会でそのまま出題されます。問題には作成者としてあなたのマイクラの名前が表示されます。</p>
   </div>
 
-  <div id="login" class="card bevel login" aria-live="polite"></div>
+  <div id="login" class="card login" aria-live="polite"></div>
 
   <form id="quiz-form" novalidate>
-    <section class="card bevel">
-      <h2 style="margin-bottom:16px">問題</h2>
+    <section class="card">
+      <h2>問題</h2>
 
-      <div class="row">
-        <div class="field">
-          <label for="genre">ジャンル</label>
-          <select id="genre" required><option value="">選んでください</option></select>
-        </div>
-        <div class="field">
-          <span class="label" id="diff-label">難易度</span>
-          <div class="stars" role="group" aria-labelledby="diff-label" id="difficulty"></div>
-          <div class="hint">1がかんたん、5がむずかしい</div>
-        </div>
+      <div class="field">
+        <label for="genre">ジャンル</label>
+        <select id="genre" required><option value="">選んでください</option></select>
       </div>
 
       <div class="field">
         <label for="tag-input">タグ</label>
-        <div class="chips sunken" id="tags"><input id="tag-input" type="text" placeholder="入力してEnter" autocomplete="off"></div>
+        <div class="chips" id="tags"><input id="tag-input" type="text" placeholder="入力してEnter" autocomplete="off"></div>
         <div class="hint">最大5つ。例: 日本の首都、2020年代、ネザー</div>
       </div>
 
       <div class="field">
         <label for="question">問題文 <span class="count" id="q-count"></span></label>
-        <textarea id="question" required placeholder="例: 日本の首都はどこでしょう？"></textarea>
+        <input id="question" type="text" required placeholder="例: 日本の首都はどこ？" autocomplete="off">
         <div class="hint">早押しでは左から1文字ずつ表示されます。答えがわかる部分は、なるべく後ろに置くのがおすすめです。</div>
       </div>
 
-      <div class="field">
+      <div class="field" style="margin-bottom:0">
         <span class="label">出題プレビュー</span>
         <div class="preview-screen" id="preview" aria-live="off"></div>
         <div style="margin-top:8px"><button type="button" class="btn small" id="preview-btn">プレビューを再生</button></div>
       </div>
     </section>
 
-    <section class="card bevel">
-      <h2 style="margin-bottom:16px">正解</h2>
+    <section class="card">
+      <h2>正解</h2>
       <div class="row">
         <div class="field">
           <label for="ans-display">正解(漢字など)</label>
@@ -81,7 +71,7 @@
 
       <div class="field" style="margin-bottom:0">
         <span class="label">正解として受け付ける入力</span>
-        <div class="chips sunken" id="accepted"></div>
+        <div class="chips" id="accepted"></div>
         <div class="hint">点線は自動で作られたものです。おかしいものは×で消し、足りないものは下に入力してEnterで追加できます。</div>
         <input id="accept-input" type="text" placeholder="受け付ける入力を追加" autocomplete="off" style="margin-top:8px">
       </div>
@@ -94,10 +84,10 @@
     </div>
   </form>
 
-  <section id="result" class="card bevel" hidden>
-    <h2 style="margin-bottom:10px" id="result-title"></h2>
+  <section id="result" class="card" hidden>
+    <h2 id="result-title"></h2>
     <p id="result-text"></p>
-    <pre class="out sunken" id="result-json" hidden></pre>
+    <pre class="out" id="result-json" hidden></pre>
     <div style="margin-top:12px"><button type="button" class="btn small" id="new-btn">続けて作る</button></div>
   </section>
 </div>

@@ -13,7 +13,7 @@ window.TABUSABA = {
   ],
 
   QUIZ: {
-    QUESTION_MAX: 120,   // 問題文の最大文字数
+    QUESTION_MAX: 20,    // 問題文の最大文字数
     TAGS_MAX: 5,         // タグの最大個数
     TAG_LEN_MAX: 12,     // タグ1つの最大文字数
     ALT_MAX: 5,          // 別解の最大個数
