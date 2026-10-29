@@ -3,7 +3,7 @@ window.TABUSABA = {
   // Web側API(Cloudflare Workers など)のURL。末尾の / は付けない。
   // 空のままだと「お試しモード」になり、作成した問題はJSONで表示されるだけになります。
   // 例: "https://api.tabusaba.example.workers.dev"
-  API_BASE: "",
+  API_BASE: "https://tabusaba-api.wanchan0tabu.workers.dev",
 
   // 早押しクイズのジャンル(並び順のまま表示されます)
   GENRES: [

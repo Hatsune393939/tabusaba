@@ -168,33 +168,70 @@
   }
 
   // ---- ログイン ----
+  // ログイン後、APIから #token=... 付きでこのページに戻ってくる
+  const TOKEN_KEY = "tabusaba_token";
+  const LOGIN_ERRORS = {
+    not_linked: "このDiscordアカウントはまだマイクラと連携されていません。ゲーム内で /mclink してから、もう一度ログインしてください。",
+    cancelled: "ログインがキャンセルされました。",
+    expired: "ログインの有効期限が切れました。もう一度ログインしてください。",
+    bad_state: "ログインに失敗しました。もう一度ログインしてください。",
+    discord_error: "Discordとの通信に失敗しました。時間をおいてもう一度試してください。"
+  };
+  const storage = {
+    get() { try { return localStorage.getItem(TOKEN_KEY); } catch (e) { return null; } },
+    set(v) { try { localStorage.setItem(TOKEN_KEY, v); } catch (e) { /* 保存できない環境 */ } },
+    clear() { try { localStorage.removeItem(TOKEN_KEY); } catch (e) { /* 同上 */ } }
+  };
+  let loginError = "";
+  (function readHash() {
+    if (!location.hash) return;
+    const h = new URLSearchParams(location.hash.slice(1));
+    if (h.get("token")) storage.set(h.get("token"));
+    if (h.get("error")) loginError = LOGIN_ERRORS[h.get("error")] || LOGIN_ERRORS.bad_state;
+    history.replaceState(null, "", location.pathname + location.search);  // トークンをURLから消す
+  })();
+  const authHeaders = () => (storage.get() ? { Authorization: `Bearer ${storage.get()}` } : {});
+  const loginUrl = () => `${API}/auth/login?redirect=${encodeURIComponent(location.origin + location.pathname)}`;
+
   async function loadUser() {
     const box = $("login");
     if (DEMO) {
-      box.className = "notice warn";
+      box.className = "notice";
       box.textContent = "お試しモードです。config.js の API_BASE が未設定のため、投稿すると問題のデータ(JSON)が表示されるだけで保存はされません。";
       return;
     }
-    try {
-      const res = await fetch(`${API}/api/me`, { credentials: "include" });
-      if (res.ok) state.user = await res.json();
-    } catch (e) { /* 通信エラーは未ログイン扱い */ }
+    box.textContent = "読み込み中…";
+    if (storage.get()) {
+      try {
+        const res = await fetch(`${API}/api/me`, { headers: authHeaders() });
+        if (res.ok) state.user = await res.json();
+        else if (res.status === 401) storage.clear();
+      } catch (e) { /* 通信エラーは未ログイン扱い */ }
+    }
     box.textContent = "";
     if (state.user) {
       const t = document.createElement("div");
       t.innerHTML = `<strong></strong> としてログイン中<div class="hint"></div>`;
       t.querySelector("strong").textContent = state.user.minecraftName;
       t.querySelector(".hint").textContent = `Discord: ${state.user.discordName}`;
-      const out = document.createElement("a");
-      out.className = "btn small"; out.textContent = "ログアウト";
-      out.href = `${API}/auth/logout?redirect=${encodeURIComponent(location.href)}`;
+      const out = document.createElement("button");
+      out.type = "button"; out.className = "btn small"; out.textContent = "ログアウト";
+      out.addEventListener("click", async () => {
+        try { await fetch(`${API}/auth/logout`, { method: "POST", headers: authHeaders() }); } catch (e) { /* 失敗しても手元は消す */ }
+        storage.clear(); state.user = null; loadUser();
+      });
       box.append(t, out);
+      $("submit-btn").disabled = false;
     } else {
       const t = document.createElement("div");
       t.innerHTML = `問題を投稿するにはログインしてください。<div class="hint">ゲーム内で /mclink したDiscordアカウントを使います。</div>`;
+      if (loginError) {
+        const e = document.createElement("div");
+        e.className = "error"; e.textContent = loginError;
+        t.appendChild(e);
+      }
       const a = document.createElement("a");
-      a.className = "btn primary"; a.textContent = "Discordでログイン";
-      a.href = `${API}/auth/login?redirect=${encodeURIComponent(location.href)}`;
+      a.className = "btn primary"; a.textContent = "Discordでログイン"; a.href = loginUrl();
       box.append(t, a);
       $("submit-btn").disabled = true;
     }
@@ -255,11 +292,12 @@
     btn.disabled = true; btn.textContent = "投稿中…";
     try {
       const res = await fetch(`${API}/api/quizzes`, {
-        method: "POST", credentials: "include",
-        headers: { "Content-Type": "application/json" },
+        method: "POST",
+        headers: { "Content-Type": "application/json", ...authHeaders() },
         body: JSON.stringify(data)
       });
-      if (res.status === 401) throw new Error("ログインの有効期限が切れました。ログインし直してください。");
+      if (res.status === 401) { storage.clear(); state.user = null; loadUser(); throw new Error("ログインの有効期限が切れました。ログインし直してください。"); }
+      if (res.status === 429) throw new Error("今日はこれ以上投稿できません(1日30問まで)。また明日投稿してください。");
       if (!res.ok) throw new Error(`投稿できませんでした(エラー ${res.status})。時間をおいてもう一度試してください。`);
       showResult("問題を投稿しました", "次の早押しクイズ大会から出題されるようになります。");
     } catch (ex) {
