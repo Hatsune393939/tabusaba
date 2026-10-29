@@ -134,7 +134,7 @@
     const box = $("login");
     box.textContent = "";
     box.className = "card login";
-    $("tabs").hidden = !state.user;
+    $("tab-mine").hidden = !state.user;
     if (DEMO) {
       box.className = "notice";
       box.textContent = "お試しモードです。config.js の API_BASE が未設定のため、投稿すると問題のデータ(JSON)が表示されるだけで保存はされません。";
@@ -436,8 +436,28 @@
     renderMine();
   }
 
+  // 作った問題にあるジャンルだけを、件数付きで選択肢にする
+  function renderMineGenres() {
+    const sel = $("mine-genre");
+    const current = sel.value;
+    const counts = new Map();
+    for (const q of state.mine) counts.set(q.genre, (counts.get(q.genre) || 0) + 1);
+    const order = [...state.genres.filter((g) => counts.has(g)), ...[...counts.keys()].filter((g) => !state.genres.includes(g))];
+    sel.textContent = "";
+    const all = document.createElement("option");
+    all.value = ""; all.textContent = `すべてのジャンル(${state.mine.length})`;
+    sel.appendChild(all);
+    for (const g of order) {
+      const o = document.createElement("option");
+      o.value = g; o.textContent = `${g}(${counts.get(g)})`;
+      sel.appendChild(o);
+    }
+    sel.value = counts.has(current) ? current : "";
+  }
+
   function renderMine() {
     $("mine-count").textContent = state.mine.length ? `(${state.mine.length})` : "";
+    renderMineGenres();
     const box = $("mine-list");
     box.textContent = "";
     if (!state.mine.length) {
@@ -447,7 +467,8 @@
       box.appendChild(p);
       return;
     }
-    for (const quiz of state.mine) {
+    const genre = $("mine-genre").value;
+    for (const quiz of state.mine.filter((q) => !genre || q.genre === genre)) {
       const el = document.createElement("article");
       el.className = "qitem";
       el.innerHTML = `
@@ -508,9 +529,82 @@
 
   // ---- 表示の切り替え ----
   function showView(name) {
+    if (name === "mine" && !state.user) name = "create";
     $("view-create").hidden = name !== "create";
     $("view-mine").hidden = name !== "mine";
+    $("view-stats").hidden = name !== "stats";
     document.querySelectorAll("#tabs button").forEach((b) => b.setAttribute("aria-selected", String(b.dataset.view === name)));
+  }
+
+  // ---- みんなの統計(問題の中身は表示しない) ----
+  async function loadStats() {
+    if (DEMO) { $("stats-note").textContent = "お試しモードでは統計を表示できません。"; return; }
+    let data;
+    try {
+      const res = await fetch(`${API}/api/stats`);
+      if (!res.ok) throw new Error();
+      data = await res.json();
+    } catch (e) {
+      $("stats-note").textContent = "統計を読み込めませんでした。時間をおいてもう一度開いてください。";
+      return;
+    }
+    $("stats-note").textContent = "数字は1分ほど遅れて反映されることがあります。";
+
+    const cards = $("stats-cards");
+    cards.textContent = "";
+    for (const [num, label] of [[data.total, "問題の総数"], [data.authorCount, "作った人"], [data.tags.length, "タグの種類"]]) {
+      const el = document.createElement("div");
+      el.className = "stat";
+      el.innerHTML = "<b></b><span></span>";
+      el.querySelector("b").textContent = num.toLocaleString("ja-JP");
+      el.querySelector("span").textContent = label;
+      cards.appendChild(el);
+    }
+
+    const rank = $("stats-ranking");
+    rank.textContent = "";
+    if (!data.ranking.length) rank.innerHTML = '<li class="empty">まだ誰も問題を作っていません。</li>';
+    let place = 0, prev = null;
+    data.ranking.forEach((r, i) => {
+      if (r.count !== prev) { place = i + 1; prev = r.count; }  // 同数は同順位
+      const li = document.createElement("li");
+      if (place <= 3) li.className = `top${place}`;
+      li.innerHTML = '<span class="place"></span><img alt="" width="28" height="28"><span class="name"></span><span class="n"></span>';
+      li.querySelector(".place").textContent = `${place}位`;
+      const img = li.querySelector("img");
+      img.src = `https://minotar.net/helm/${encodeURIComponent(r.name)}/56.png`;
+      img.referrerPolicy = "no-referrer"; img.loading = "lazy";
+      img.addEventListener("error", () => { img.src = "../Main/icon.png"; }, { once: true });
+      li.querySelector(".name").textContent = r.name;
+      li.querySelector(".n").textContent = `${r.count}問`;
+      if (state.user && r.name === state.user.minecraftName) li.classList.add("me-row");
+      rank.appendChild(li);
+    });
+
+    const gbox = $("stats-genres");
+    gbox.textContent = "";
+    const max = Math.max(1, ...data.genres.map((g) => g.count));
+    for (const g of data.genres) {
+      const li = document.createElement("li");
+      li.innerHTML = '<span class="g"></span><span class="bar"><i></i></span><span class="n"></span>';
+      li.querySelector(".g").textContent = g.genre;
+      li.querySelector("i").style.width = `${(g.count / max) * 100}%`;
+      li.querySelector(".n").textContent = `${g.count}問`;
+      gbox.appendChild(li);
+    }
+    if (!data.genres.length) gbox.innerHTML = '<li class="empty">まだ問題がありません。</li>';
+
+    const tbox = $("stats-tags");
+    tbox.textContent = "";
+    for (const t of data.tags) {
+      const el = document.createElement("span");
+      el.className = "tag";
+      el.innerHTML = "<span></span><small></small>";
+      el.querySelector("span").textContent = `#${t.tag}`;
+      el.querySelector("small").textContent = t.count;
+      tbox.appendChild(el);
+    }
+    if (!data.tags.length) tbox.innerHTML = '<p class="empty">まだタグが付いた問題はありません。</p>';
   }
 
   // ---- 初期化 ----
@@ -523,6 +617,7 @@
   document.querySelectorAll("#tabs button").forEach((b) => b.addEventListener("click", () => {
     showView(b.dataset.view);
     if (b.dataset.view === "mine") loadMine();
+    if (b.dataset.view === "stats") loadStats();
   }));
 
   // 日本語入力の変換確定のEnterでは追加しない(isComposing)
@@ -551,6 +646,7 @@
     renderAccepted();
   });
 
+  $("mine-genre").addEventListener("change", renderMine);
   $("quiz-form").addEventListener("submit", submit);
   $("quiz-form").addEventListener("reset", (e) => {
     e.preventDefault();

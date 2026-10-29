@@ -22,13 +22,36 @@
 
   <div id="login" class="card login" aria-live="polite"></div>
 
-  <nav class="tabs" id="tabs" role="tablist" aria-label="表示の切り替え" hidden>
+  <nav class="tabs" id="tabs" role="tablist" aria-label="表示の切り替え">
     <button type="button" role="tab" data-view="create" aria-selected="true">問題を作る</button>
-    <button type="button" role="tab" data-view="mine" aria-selected="false">作った問題 <span id="mine-count"></span></button>
+    <button type="button" role="tab" data-view="mine" aria-selected="false" id="tab-mine" hidden>作った問題 <span id="mine-count"></span></button>
+    <button type="button" role="tab" data-view="stats" aria-selected="false">みんなの統計</button>
   </nav>
 
   <section id="view-mine" hidden>
+    <div class="filter">
+      <label for="mine-genre">ジャンルで絞り込む</label>
+      <select id="mine-genre"><option value="">すべてのジャンル</option></select>
+    </div>
     <div id="mine-list" class="qlist" aria-live="polite"></div>
+  </section>
+
+  <section id="view-stats" hidden>
+    <div class="stat-cards" id="stats-cards"></div>
+    <div class="card">
+      <h2>作成数ランキング</h2>
+      <ol class="ranking" id="stats-ranking"></ol>
+    </div>
+    <div class="card">
+      <h2>ジャンル別の問題数</h2>
+      <ul class="genre-bars" id="stats-genres"></ul>
+    </div>
+    <div class="card">
+      <h2>タグ一覧</h2>
+      <p class="hint" style="margin:-6px 0 12px">問題に付けられたタグと、そのタグが付いた問題の数です。</p>
+      <div class="taglist" id="stats-tags"></div>
+    </div>
+    <p class="hint" id="stats-note" style="margin-bottom:56px"></p>
   </section>
 
   <div id="view-create">
