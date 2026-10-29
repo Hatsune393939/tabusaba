@@ -474,7 +474,8 @@
       el.querySelector(".a").textContent = `正解: ${ans}`;
       const stats = el.querySelector(".stats");
       const rate = quiz.playCount ? `正答率 ${Math.round((quiz.correctCount / quiz.playCount) * 100)}%` : "まだ出題されていません";
-      for (const txt of [`#${quiz.id}`, quiz.playCount ? `出題 ${quiz.playCount}回` : null, rate,
+      const stars = quiz.ratingCount ? `★ ${Number(quiz.ratingAvg).toFixed(1)}(${quiz.ratingCount}件)` : null;
+      for (const txt of [`#${quiz.id}`, stars, quiz.playCount ? `出題 ${quiz.playCount}回` : null, rate,
                          `作成 ${formatDate(quiz.createdAt)}`, quiz.updatedAt ? `編集 ${formatDate(quiz.updatedAt)}` : null]) {
         if (!txt) continue;
         const b = document.createElement("span");

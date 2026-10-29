@@ -50,7 +50,7 @@ p { margin: 0 0 1em; }
   .hero { flex-direction: column; align-items: flex-start; gap: 16px; padding-top: 32px; }
   .hero img { width: 80px; height: 80px; border-radius: 14px; }
 }
-.menu { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 56px; }
+.menu { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 20px; }
 @media (max-width: 760px) { .menu { grid-template-columns: 1fr; } }
 .menu a {
   display: flex; flex-direction: column; gap: 6px; padding: 18px 18px 16px; text-decoration: none;
@@ -132,3 +132,16 @@ pre.out { white-space: pre-wrap; word-break: break-all; font-size: .8rem; paddin
 .btn.danger { color: var(--danger); }
 .btn.danger:hover { border-color: var(--danger); }
 .empty { color: var(--muted); text-align: center; padding: 32px 0; }
+
+/* バージョン・最終更新日(実績一覧と同じ位置づけ) */
+.ver { font-size: .8rem; font-weight: 600; color: var(--muted); vertical-align: middle; white-space: nowrap; }
+.updated { margin: 4px 0 0; font-size: .85rem; color: var(--muted); }
+.page-head .updated { margin: -2px 0 8px; }
+
+/* サーバーに参加する */
+.server { margin-bottom: 40px; }
+.server dl { margin: 0; display: grid; grid-template-columns: 1fr 1fr; gap: 12px 20px; }
+@media (max-width: 560px) { .server dl { grid-template-columns: 1fr; } }
+.server dt { font-size: .8rem; color: var(--muted); margin-bottom: 4px; }
+.server dd { margin: 0; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; font-weight: 600; }
+.server code { font-family: ui-monospace, "Cascadia Mono", Consolas, monospace; font-size: 1rem; background: var(--bg); border: 1px solid var(--line); border-radius: 8px; padding: 4px 10px; word-break: break-all; }

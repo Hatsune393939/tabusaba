@@ -1,5 +1,13 @@
 // サイト全体の設定。ここだけ書き換えれば各ページに反映されます。
 window.TABUSABA = {
+  // サイトのバージョンと最終更新日(更新したらここを書き換える)
+  SITE_VERSION: "1.0",
+  SITE_UPDATED: "2026-10-29",
+
+  // サーバー情報(トップページの下に表示)
+  SERVER_IP: "1001wantyanserver.mydns.jp",
+  SERVER_VERSIONS: "Java版 1.21.11 〜 最新バージョン",
+
   // Web側API(Cloudflare Workers)のURL。末尾の / は付けない。
   // 空にすると「お試しモード」になり、作成した問題はJSONで表示されるだけになります。
   API_BASE: "https://tabusaba-api.wanchan0tabu.workers.dev",
