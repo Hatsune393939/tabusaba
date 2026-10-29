@@ -20,6 +20,20 @@
 
   <div id="login" class="card login" aria-live="polite"></div>
 
+  <nav class="tabs" id="tabs" role="tablist" aria-label="表示の切り替え" hidden>
+    <button type="button" role="tab" data-view="create" aria-selected="true">問題を作る</button>
+    <button type="button" role="tab" data-view="mine" aria-selected="false">作った問題 <span id="mine-count"></span></button>
+  </nav>
+
+  <section id="view-mine" hidden>
+    <div id="mine-list" class="qlist" aria-live="polite"></div>
+  </section>
+
+  <div id="view-create">
+  <div id="edit-banner" class="notice" hidden>
+    <span id="edit-text"></span>
+    <button type="button" class="btn small" id="cancel-edit">編集をやめる</button>
+  </div>
   <form id="quiz-form" novalidate>
     <section class="card">
       <h2>問題</h2>
@@ -32,7 +46,7 @@
       <div class="field">
         <label for="tag-input">タグ</label>
         <div class="chips" id="tags"><input id="tag-input" type="text" placeholder="入力してEnter" autocomplete="off"></div>
-        <div class="hint">最大5つ。例: 日本の首都、2020年代、ネザー</div>
+        <div class="hint">最大5つ。単語のみにしてください。</div>
       </div>
 
       <div class="field">
@@ -88,8 +102,12 @@
     <h2 id="result-title"></h2>
     <p id="result-text"></p>
     <pre class="out" id="result-json" hidden></pre>
-    <div style="margin-top:12px"><button type="button" class="btn small" id="new-btn">続けて作る</button></div>
+    <div style="margin-top:12px; display:flex; gap:8px; flex-wrap:wrap">
+      <button type="button" class="btn small" id="new-btn">続けて作る</button>
+      <button type="button" class="btn small" id="to-mine-btn" hidden>作った問題を見る</button>
+    </div>
   </section>
+  </div>
 </div>
 <script src="quiz.js"></script>
 </body>

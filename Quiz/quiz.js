@@ -9,10 +9,25 @@
 
   const state = {
     user: null,
+    genres: [],
     tags: [],
-    alts: [],              // [{display, reading}]
-    manualAccepted: [],    // 自分で追加した受理表記
-    removedAuto: new Set() // 自動生成から消した受理表記
+    alts: [],               // [{display, reading}]
+    manualAccepted: [],     // 自分で追加した受理表記
+    removedAuto: new Set(), // 自動生成から消した受理表記
+    editingId: null,        // 編集中の問題のID
+    mine: []                // 自分が作った問題
+  };
+
+  const ERRORS = {
+    invalid_genre: "ジャンルが正しくありません。ページを再読み込みしてから選び直してください。",
+    invalid_question: `問題文は${Q.QUESTION_MAX}文字以内で入力してください。`,
+    invalid_answer: "正解か読みを正しく入力してください。",
+    invalid_reading: "読みはひらがなで入力してください。",
+    invalid_tags: "タグの数か長さが多すぎます。",
+    invalid_alternatives: "別解の入力が正しくありません。",
+    invalid_accepted: "正解として受け付ける入力を確認してください。",
+    too_many: "今日はこれ以上投稿できません(1日30問まで)。また明日投稿してください。",
+    not_found: "この問題は見つかりませんでした。すでに削除されている可能性があります。"
   };
 
   // ---- 正規化(Skript側と同じルールにすること) ----
@@ -63,7 +78,124 @@
     return [...new Set([...auto, ...state.manualAccepted])];
   }
 
-  // ---- 描画 ----
+  // ---- ログイン ----
+  // ログイン後、APIから #token=... 付きでこのページに戻ってくる
+  const TOKEN_KEY = "tabusaba_token";
+  const LOGIN_ERRORS = {
+    not_linked: "このDiscordアカウントはまだマイクラと連携されていません。ゲーム内で /mclink してから、もう一度ログインしてください。",
+    cancelled: "ログインがキャンセルされました。",
+    expired: "ログインの有効期限が切れました。もう一度ログインしてください。",
+    bad_state: "ログインに失敗しました。もう一度ログインしてください。",
+    discord_error: "Discordとの通信に失敗しました。時間をおいてもう一度試してください。"
+  };
+  const storage = {
+    get() { try { return localStorage.getItem(TOKEN_KEY); } catch (e) { return null; } },
+    set(v) { try { localStorage.setItem(TOKEN_KEY, v); } catch (e) { /* 保存できない環境 */ } },
+    clear() { try { localStorage.removeItem(TOKEN_KEY); } catch (e) { /* 同上 */ } }
+  };
+  let loginError = "";
+  (function readHash() {
+    if (!location.hash) return;
+    const h = new URLSearchParams(location.hash.slice(1));
+    if (h.get("token")) storage.set(h.get("token"));
+    if (h.get("error")) loginError = LOGIN_ERRORS[h.get("error")] || LOGIN_ERRORS.bad_state;
+    history.replaceState(null, "", location.pathname + location.search);  // トークンをURLから消す
+  })();
+  const authHeaders = () => (storage.get() ? { Authorization: `Bearer ${storage.get()}` } : {});
+  const loginUrl = () => `${API}/auth/login?redirect=${encodeURIComponent(location.origin + location.pathname)}`;
+
+  // APIを呼ぶ。401ならログアウト状態に戻す
+  async function api(path, options = {}) {
+    const res = await fetch(`${API}${path}`, {
+      ...options,
+      headers: { ...(options.body ? { "Content-Type": "application/json" } : {}), ...authHeaders(), ...(options.headers || {}) }
+    });
+    let body = null;
+    try { body = await res.json(); } catch (e) { /* 本文なし */ }
+    if (res.status === 401) {
+      storage.clear(); state.user = null; renderLogin();
+      throw new Error("ログインの有効期限が切れました。ログインし直してください。");
+    }
+    if (!res.ok) throw new Error(ERRORS[body?.error] || `うまくいきませんでした(エラー ${res.status})。時間をおいてもう一度試してください。`);
+    return body;
+  }
+
+  async function loadUser() {
+    if (DEMO) { renderLogin(); return; }
+    $("login").textContent = "読み込み中…";
+    if (storage.get()) {
+      try { state.user = await api("/api/me"); } catch (e) { /* 未ログイン扱い */ }
+    }
+    renderLogin();
+    if (state.user) loadMine();
+  }
+
+  function renderLogin() {
+    const box = $("login");
+    box.textContent = "";
+    box.className = "card login";
+    $("tabs").hidden = !state.user;
+    if (DEMO) {
+      box.className = "notice";
+      box.textContent = "お試しモードです。config.js の API_BASE が未設定のため、投稿すると問題のデータ(JSON)が表示されるだけで保存はされません。";
+      return;
+    }
+    if (state.user) {
+      const me = document.createElement("div");
+      me.className = "me";
+      const img = document.createElement("img");
+      img.src = `https://minotar.net/helm/${encodeURIComponent(state.user.minecraftName)}/80.png`;
+      img.alt = ""; img.width = 40; img.height = 40; img.referrerPolicy = "no-referrer";
+      img.addEventListener("error", () => { img.src = "../Main/icon.png"; }, { once: true });
+      const t = document.createElement("div");
+      t.innerHTML = `<strong></strong> としてログイン中<div class="hint"></div>`;
+      t.querySelector("strong").textContent = state.user.minecraftName;
+      t.querySelector(".hint").textContent = `Discord: ${state.user.discordName}`;
+      me.append(img, t);
+      const out = document.createElement("button");
+      out.type = "button"; out.className = "btn small"; out.textContent = "ログアウト";
+      out.addEventListener("click", async () => {
+        try { await fetch(`${API}/auth/logout`, { method: "POST", headers: authHeaders() }); } catch (e) { /* 手元は消す */ }
+        storage.clear(); state.user = null; state.mine = [];
+        cancelEdit(); showView("create"); renderLogin();
+      });
+      box.append(me, out);
+      $("submit-btn").disabled = false;
+    } else {
+      const t = document.createElement("div");
+      t.innerHTML = `問題を投稿するにはログインしてください。<div class="hint">ゲーム内で /mclink したDiscordアカウントを使います。</div>`;
+      if (loginError) {
+        const e = document.createElement("div");
+        e.className = "error"; e.textContent = loginError;
+        t.appendChild(e);
+      }
+      const a = document.createElement("a");
+      a.className = "btn primary"; a.textContent = "Discordでログイン"; a.href = loginUrl();
+      box.append(t, a);
+      $("submit-btn").disabled = true;
+      showView("create");
+    }
+  }
+
+  // ---- ジャンル(Main/genres.json) ----
+  async function loadGenres() {
+    const sel = $("genre");
+    try {
+      const res = await fetch("../Main/genres.json", { cache: "no-cache" });
+      const data = await res.json();
+      state.genres = Array.isArray(data.genres) ? data.genres : [];
+    } catch (e) {
+      state.genres = [];
+      $("form-error").textContent = "ジャンルの一覧を読み込めませんでした。ページを再読み込みしてください。";
+    }
+    for (const g of state.genres) {
+      const o = document.createElement("option");
+      o.value = g; o.textContent = g;
+      sel.appendChild(o);
+    }
+  }
+
+  // ---- フォームの描画 ----
   function chip(text, onRemove, auto) {
     const el = document.createElement("span");
     el.className = "chip" + (auto ? " auto" : "");
@@ -146,14 +278,18 @@
   }
 
   // ---- 出題プレビュー(左から1文字ずつ) ----
+  // ボタンを押したときだけ再生する。OSの「アニメーションを減らす」設定でも再生する
   let timer = null;
+  function showPreviewText(text) {
+    clearInterval(timer);
+    $("preview").textContent = text || "問題文を入力して「プレビューを再生」を押すと、ここで確認できます。";
+  }
   function playPreview() {
     clearInterval(timer);
     const chars = [...$("question").value.trim()];
     const screen = $("preview");
-    if (!chars.length) { screen.textContent = "問題文を入力するとここで確認できます。"; return; }
-    const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    let i = reduce ? chars.length : 0;
+    if (!chars.length) { showPreviewText(""); return; }
+    let i = 0;
     const draw = () => {
       screen.textContent = chars.slice(0, i).join("");
       if (i < chars.length) {
@@ -163,81 +299,11 @@
       }
     };
     draw();
-    if (reduce) return;
     timer = setInterval(() => { i++; draw(); if (i >= chars.length) clearInterval(timer); }, Q.REVEAL_MS);
+    $("preview-btn").textContent = "もう一度再生";
   }
 
-  // ---- ログイン ----
-  // ログイン後、APIから #token=... 付きでこのページに戻ってくる
-  const TOKEN_KEY = "tabusaba_token";
-  const LOGIN_ERRORS = {
-    not_linked: "このDiscordアカウントはまだマイクラと連携されていません。ゲーム内で /mclink してから、もう一度ログインしてください。",
-    cancelled: "ログインがキャンセルされました。",
-    expired: "ログインの有効期限が切れました。もう一度ログインしてください。",
-    bad_state: "ログインに失敗しました。もう一度ログインしてください。",
-    discord_error: "Discordとの通信に失敗しました。時間をおいてもう一度試してください。"
-  };
-  const storage = {
-    get() { try { return localStorage.getItem(TOKEN_KEY); } catch (e) { return null; } },
-    set(v) { try { localStorage.setItem(TOKEN_KEY, v); } catch (e) { /* 保存できない環境 */ } },
-    clear() { try { localStorage.removeItem(TOKEN_KEY); } catch (e) { /* 同上 */ } }
-  };
-  let loginError = "";
-  (function readHash() {
-    if (!location.hash) return;
-    const h = new URLSearchParams(location.hash.slice(1));
-    if (h.get("token")) storage.set(h.get("token"));
-    if (h.get("error")) loginError = LOGIN_ERRORS[h.get("error")] || LOGIN_ERRORS.bad_state;
-    history.replaceState(null, "", location.pathname + location.search);  // トークンをURLから消す
-  })();
-  const authHeaders = () => (storage.get() ? { Authorization: `Bearer ${storage.get()}` } : {});
-  const loginUrl = () => `${API}/auth/login?redirect=${encodeURIComponent(location.origin + location.pathname)}`;
-
-  async function loadUser() {
-    const box = $("login");
-    if (DEMO) {
-      box.className = "notice";
-      box.textContent = "お試しモードです。config.js の API_BASE が未設定のため、投稿すると問題のデータ(JSON)が表示されるだけで保存はされません。";
-      return;
-    }
-    box.textContent = "読み込み中…";
-    if (storage.get()) {
-      try {
-        const res = await fetch(`${API}/api/me`, { headers: authHeaders() });
-        if (res.ok) state.user = await res.json();
-        else if (res.status === 401) storage.clear();
-      } catch (e) { /* 通信エラーは未ログイン扱い */ }
-    }
-    box.textContent = "";
-    if (state.user) {
-      const t = document.createElement("div");
-      t.innerHTML = `<strong></strong> としてログイン中<div class="hint"></div>`;
-      t.querySelector("strong").textContent = state.user.minecraftName;
-      t.querySelector(".hint").textContent = `Discord: ${state.user.discordName}`;
-      const out = document.createElement("button");
-      out.type = "button"; out.className = "btn small"; out.textContent = "ログアウト";
-      out.addEventListener("click", async () => {
-        try { await fetch(`${API}/auth/logout`, { method: "POST", headers: authHeaders() }); } catch (e) { /* 失敗しても手元は消す */ }
-        storage.clear(); state.user = null; loadUser();
-      });
-      box.append(t, out);
-      $("submit-btn").disabled = false;
-    } else {
-      const t = document.createElement("div");
-      t.innerHTML = `問題を投稿するにはログインしてください。<div class="hint">ゲーム内で /mclink したDiscordアカウントを使います。</div>`;
-      if (loginError) {
-        const e = document.createElement("div");
-        e.className = "error"; e.textContent = loginError;
-        t.appendChild(e);
-      }
-      const a = document.createElement("a");
-      a.className = "btn primary"; a.textContent = "Discordでログイン"; a.href = loginUrl();
-      box.append(t, a);
-      $("submit-btn").disabled = true;
-    }
-  }
-
-  // ---- 入力チェックと投稿 ----
+  // ---- 入力チェック ----
   function validate() {
     const q = $("question").value.trim();
     const display = $("ans-display").value.trim();
@@ -269,12 +335,14 @@
 
   function showResult(title, text, json) {
     $("quiz-form").hidden = true;
+    $("edit-banner").hidden = true;
     $("result").hidden = false;
     $("result-title").textContent = title;
     $("result-text").textContent = text;
     const pre = $("result-json");
     pre.hidden = !json;
     if (json) pre.textContent = JSON.stringify(json, null, 2);
+    $("to-mine-btn").hidden = !state.user;
     $("result").scrollIntoView({ block: "start" });
   }
 
@@ -285,50 +353,176 @@
     if (err) return;
     const data = payload();
     if (DEMO) {
-      showResult("問題データを作りました", "お試しモードのため保存はされていません。APIを用意したら、このデータがそのまま送信されます。", data);
+      showResult("問題データを作りました", "お試しモードのため保存はされていません。", data);
       return;
     }
     const btn = $("submit-btn");
-    btn.disabled = true; btn.textContent = "投稿中…";
+    const label = btn.textContent;
+    btn.disabled = true; btn.textContent = "送信中…";
     try {
-      const res = await fetch(`${API}/api/quizzes`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json", ...authHeaders() },
-        body: JSON.stringify(data)
-      });
-      if (res.status === 401) { storage.clear(); state.user = null; loadUser(); throw new Error("ログインの有効期限が切れました。ログインし直してください。"); }
-      if (res.status === 429) throw new Error("今日はこれ以上投稿できません(1日30問まで)。また明日投稿してください。");
-      if (!res.ok) throw new Error(`投稿できませんでした(エラー ${res.status})。時間をおいてもう一度試してください。`);
-      showResult("問題を投稿しました", "次の早押しクイズ大会から出題されるようになります。");
+      if (state.editingId) {
+        await api(`/api/quizzes/${state.editingId}`, { method: "PUT", body: JSON.stringify(data) });
+        state.editingId = null;
+        showResult("変更を保存しました", "次の早押しクイズ大会から、変更後の内容で出題されます。");
+      } else {
+        await api("/api/quizzes", { method: "POST", body: JSON.stringify(data) });
+        showResult("問題を投稿しました", "次の早押しクイズ大会から出題されるようになります。");
+      }
+      loadMine();
     } catch (ex) {
       $("form-error").textContent = ex.message || "サーバーに接続できませんでした。";
     } finally {
-      btn.disabled = false; btn.textContent = "問題を投稿";
+      btn.disabled = !state.user; btn.textContent = label;
     }
   }
 
-  function resetAll() {
+  // ---- フォームを空にする / 問題を読み込む ----
+  function clearForm() {
+    // form.reset() は reset イベントを発生させるので使わず、直接空にする
+    for (const id of ["genre", "question", "ans-display", "ans-reading", "tag-input", "accept-input"]) $(id).value = "";
     state.tags = []; state.alts = [];
-    state.manualAccepted = []; state.removedAuto.clear();
+    state.manualAccepted = []; state.removedAuto = new Set();
     $("form-error").textContent = "";
-    setTimeout(() => { renderTags(); renderAlts(); renderAccepted(); renderCount(); playPreview(); });
+    renderTags(); renderAlts(); renderAccepted(); renderCount(); showPreviewText("");
+    $("preview-btn").textContent = "プレビューを再生";
+  }
+
+  function fillForm(quiz) {
+    clearForm();
+    $("genre").value = state.genres.includes(quiz.genre) ? quiz.genre : "";
+    $("question").value = quiz.question;
+    $("ans-display").value = quiz.answer.display;
+    $("ans-reading").value = quiz.answer.reading;
+    state.tags = [...quiz.tags];
+    state.alts = quiz.alternatives.map((a) => ({ display: a.display || "", reading: a.reading || "" }));
+    // 保存されている受理表記を、自動生成分・手動追加分・消した自動生成分に振り分ける
+    const auto = autoAccepted();
+    state.manualAccepted = quiz.accepted.filter((v) => !auto.includes(v));
+    state.removedAuto = new Set(auto.filter((v) => !quiz.accepted.includes(v)));
+    renderTags(); renderAlts(); renderAccepted(); renderCount();
+  }
+
+  function startEdit(quiz) {
+    state.editingId = quiz.id;
+    fillForm(quiz);
+    $("edit-text").textContent = `問題 #${quiz.id} を編集中`;
+    $("edit-banner").hidden = false;
+    $("submit-btn").textContent = "変更を保存";
+    $("quiz-form").hidden = false;
+    $("result").hidden = true;
+    showView("create");
+    window.scrollTo(0, 0);
+  }
+
+  function cancelEdit() {
+    state.editingId = null;
+    $("edit-banner").hidden = true;
+    $("submit-btn").textContent = "問題を投稿";
+    $("quiz-form").hidden = false;
+    $("result").hidden = true;
+    clearForm();
+  }
+
+  // ---- 作った問題 ----
+  async function loadMine() {
+    if (!state.user) return;
+    try {
+      const data = await api("/api/quizzes/mine");
+      state.mine = data.quizzes || [];
+    } catch (e) {
+      $("mine-list").textContent = e.message;
+      return;
+    }
+    renderMine();
+  }
+
+  function renderMine() {
+    $("mine-count").textContent = state.mine.length ? `(${state.mine.length})` : "";
+    const box = $("mine-list");
+    box.textContent = "";
+    if (!state.mine.length) {
+      const p = document.createElement("p");
+      p.className = "empty";
+      p.textContent = "まだ問題を作っていません。「問題を作る」から最初の1問を作ってみましょう。";
+      box.appendChild(p);
+      return;
+    }
+    for (const quiz of state.mine) {
+      const el = document.createElement("article");
+      el.className = "qitem";
+      el.innerHTML = `
+        <div class="meta"><span class="badge genre"></span><span class="tags"></span></div>
+        <div class="q"></div>
+        <div class="a"></div>
+        <div class="meta stats"></div>
+        <div class="ops">
+          <button type="button" class="btn small edit">編集</button>
+          <button type="button" class="btn small danger del">削除</button>
+        </div>`;
+      el.querySelector(".genre").textContent = quiz.genre;
+      const tags = el.querySelector(".tags");
+      for (const t of quiz.tags) {
+        const b = document.createElement("span");
+        b.className = "badge"; b.textContent = `#${t}`;
+        tags.appendChild(b);
+      }
+      tags.style.display = "contents";
+      el.querySelector(".q").textContent = quiz.question;
+      const ans = quiz.answer.display && quiz.answer.reading
+        ? `${quiz.answer.display}(${quiz.answer.reading})`
+        : quiz.answer.display || quiz.answer.reading;
+      el.querySelector(".a").textContent = `正解: ${ans}`;
+      const stats = el.querySelector(".stats");
+      const rate = quiz.playCount ? `正答率 ${Math.round((quiz.correctCount / quiz.playCount) * 100)}%` : "まだ出題されていません";
+      for (const txt of [`#${quiz.id}`, quiz.playCount ? `出題 ${quiz.playCount}回` : null, rate,
+                         `作成 ${formatDate(quiz.createdAt)}`, quiz.updatedAt ? `編集 ${formatDate(quiz.updatedAt)}` : null]) {
+        if (!txt) continue;
+        const b = document.createElement("span");
+        b.className = "badge"; b.textContent = txt;
+        stats.appendChild(b);
+      }
+      el.querySelector(".edit").addEventListener("click", () => startEdit(quiz));
+      el.querySelector(".del").addEventListener("click", () => removeQuiz(quiz));
+      box.appendChild(el);
+    }
+  }
+
+  async function removeQuiz(quiz) {
+    if (!confirm(`「${quiz.question}」を削除しますか？\n削除すると元に戻せません。`)) return;
+    try {
+      await api(`/api/quizzes/${quiz.id}`, { method: "DELETE" });
+      if (state.editingId === quiz.id) cancelEdit();
+      state.mine = state.mine.filter((x) => x.id !== quiz.id);
+      renderMine();
+    } catch (e) {
+      alert(e.message);
+    }
+  }
+
+  function formatDate(iso) {
+    if (!iso) return "";
+    const d = new Date(iso);
+    return `${d.getFullYear()}/${d.getMonth() + 1}/${d.getDate()}`;
+  }
+
+  // ---- 表示の切り替え ----
+  function showView(name) {
+    $("view-create").hidden = name !== "create";
+    $("view-mine").hidden = name !== "mine";
+    document.querySelectorAll("#tabs button").forEach((b) => b.setAttribute("aria-selected", String(b.dataset.view === name)));
   }
 
   // ---- 初期化 ----
-  const sel = $("genre");
-  for (const g of CFG.GENRES) {
-    const o = document.createElement("option");
-    o.value = g; o.textContent = g;
-    sel.appendChild(o);
-  }
-
   wk.bind($("ans-reading"), { IMEMode: "toHiragana" });
   ["ans-display", "ans-reading"].forEach((id) => $(id).addEventListener("input", renderAccepted));
-  $("question").addEventListener("input", renderCount);
   $("question").setAttribute("maxlength", Q.QUESTION_MAX);
-  $("question").addEventListener("change", playPreview);
+  $("question").addEventListener("input", renderCount);
   $("preview-btn").addEventListener("click", playPreview);
   $("add-alt").addEventListener("click", () => { state.alts.push({ display: "", reading: "" }); renderAlts(); });
+  document.querySelectorAll("#tabs button").forEach((b) => b.addEventListener("click", () => {
+    showView(b.dataset.view);
+    if (b.dataset.view === "mine") loadMine();
+  }));
 
   // 日本語入力の変換確定のEnterでは追加しない(isComposing)
   $("tag-input").addEventListener("keydown", (e) => {
@@ -357,14 +551,14 @@
   });
 
   $("quiz-form").addEventListener("submit", submit);
-  $("quiz-form").addEventListener("reset", resetAll);
-  $("new-btn").addEventListener("click", () => {
-    $("quiz-form").reset();
-    $("quiz-form").hidden = false;
-    $("result").hidden = true;
-    window.scrollTo(0, 0);
+  $("quiz-form").addEventListener("reset", (e) => {
+    e.preventDefault();
+    if (state.editingId) cancelEdit(); else clearForm();
   });
+  $("cancel-edit").addEventListener("click", cancelEdit);
+  $("new-btn").addEventListener("click", () => { cancelEdit(); window.scrollTo(0, 0); });
+  $("to-mine-btn").addEventListener("click", () => { cancelEdit(); showView("mine"); window.scrollTo(0, 0); });
 
-  renderTags(); renderAlts(); renderAccepted(); renderCount(); playPreview();
-  loadUser();
+  renderTags(); renderAlts(); renderAccepted(); renderCount(); showPreviewText("");
+  loadGenres().then(loadUser);
 })();
