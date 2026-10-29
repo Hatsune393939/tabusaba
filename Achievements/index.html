@@ -1,0 +1,114 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; style-src-attr 'unsafe-inline'; img-src 'self' data: https://minotar.net; connect-src 'self'; base-uri 'none'; form-action 'none'">
+<meta name="referrer" content="no-referrer">
+<title>実績一覧 ver 1.2</title>
+<link rel="preconnect" href="https://minotar.net" crossorigin>
+<link rel="icon" href="icon.png" type="image/png">
+<link rel="stylesheet" href="style.css?v=1.2.4">
+</head>
+<body>
+<header class="top">
+  <h1><a class="home" href="./" title="トップに戻る">実績一覧</a> <span class="ver">ver 1.2</span></h1>
+  <p class="sub"><span id="summary">読み込み中…</span><span class="sep"> ・ </span>最終更新: <span id="updatedTop">-</span></p>
+  <nav class="tabs" id="tabs" role="tablist">
+    <button data-v="ach" role="tab">実績</button>
+    <button data-v="rank" role="tab">ランキング</button>
+    <button data-v="player" role="tab">プレイヤー</button>
+    <button data-v="compare" role="tab">比較</button>
+  </nav>
+</header>
+
+<!-- 読み込みエラー -->
+<section id="err" class="view" hidden role="alert">
+  <div class="errbox">
+    <h2>データを読み込めませんでした</h2>
+    <p id="errMsg"></p>
+    <button id="retry" type="button">再読み込み</button>
+  </div>
+</section>
+
+<!-- 実績ビュー -->
+<section id="view-ach" class="view">
+  <div class="stats" id="stats"></div>
+  <div class="catbars" id="catbars"></div>
+  <div class="controls">
+    <input id="q" type="search" placeholder="実績名・説明・メッセージで検索" aria-label="検索">
+    <select id="cat" aria-label="カテゴリ"></select>
+    <select id="sort" aria-label="並び順">
+      <option value="number">番号順</option>
+      <option value="points-desc">ポイントが高い順</option>
+      <option value="rare">達成者が少ない順</option>
+      <option value="common">達成者が多い順</option>
+    </select>
+    <input id="hl" list="plist" type="search" placeholder="強調するプレイヤー名" aria-label="プレイヤーを指定して達成済みを強調" autocomplete="off">
+    <div class="switches">
+    <div class="switchrow">
+      <button id="onlyMsg" class="ios" type="button" role="switch" aria-checked="false" aria-label="メッセージ有りのみ"><span class="knob"></span></button>
+      <label for="onlyMsg">メッセージ有りのみ</label>
+    </div>
+    <div class="switchrow">
+      <button id="onlyPrefix" class="ios" type="button" role="switch" aria-checked="false" aria-label="報酬称号有りのみ"><span class="knob"></span></button>
+      <label for="onlyPrefix">報酬称号有りのみ</label>
+    </div>
+    <div class="switchrow">
+      <button id="onlyNew" class="ios" type="button" role="switch" aria-checked="false" aria-label="NEWのみ"><span class="knob"></span></button>
+      <label for="onlyNew">NEWのみ</label>
+    </div>
+    <div class="switchrow">
+      <button id="onlyFixed" class="ios" type="button" role="switch" aria-checked="false" aria-label="FIXEDのみ"><span class="knob"></span></button>
+      <label for="onlyFixed">FIXEDのみ</label>
+    </div>
+    </div>
+  </div>
+  <main id="list" class="grid" aria-live="polite"></main>
+  <div id="more"></div>
+</section>
+
+<!-- ランキングビュー -->
+<section id="view-rank" class="view" hidden>
+  <div class="controls">
+    <div class="seg" id="rankMode">
+      <button data-rk="points">ポイント順</button>
+      <button data-rk="count">達成数順</button>
+      <button data-rk="rate">達成率順</button>
+    </div>
+  </div>
+  <div id="rank" class="rank"></div>
+</section>
+
+<!-- プレイヤービュー -->
+<section id="view-player" class="view" hidden>
+  <div class="controls">
+    <input id="pq" list="plist" type="search" placeholder="プレイヤー名を入力" aria-label="プレイヤー名" autocomplete="off">
+    <datalist id="plist"></datalist>
+  </div>
+  <div id="pview"></div>
+</section>
+
+<!-- 比較ビュー -->
+<section id="view-compare" class="view" hidden>
+  <div class="controls cmpin">
+    <input id="ca" list="plist" type="search" placeholder="プレイヤー1" aria-label="プレイヤー1" autocomplete="off">
+    <button id="swap" class="swapbtn" type="button" aria-label="入れ替え" title="入れ替え">⇄</button>
+    <input id="cb" list="plist" type="search" placeholder="プレイヤー2" aria-label="プレイヤー2" autocomplete="off">
+  </div>
+  <div id="cview"></div>
+</section>
+
+<noscript><p style="padding:16px">このページの表示には JavaScript が必要です。</p></noscript>
+
+<footer>最終更新: <span id="updated">-</span> ・ ver 1.2</footer>
+
+<dialog id="dlg"><div class="dlg-head"><h3 id="dlg-title"></h3><button class="dlg-close" id="dlg-close" aria-label="閉じる">&times;</button></div><div class="dlg-body" id="dlg-body"></div></dialog>
+
+<button id="toTop" class="to-top" aria-label="一番上に戻る" title="一番上に戻る">↑</button>
+
+<script src="mc.js?v=1.2.4"></script>
+<script src="icons.js?v=1.2.4"></script>
+<script src="app.js?v=1.2.4"></script>
+</body>
+</html>

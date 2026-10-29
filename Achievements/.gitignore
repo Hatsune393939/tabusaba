@@ -1,0 +1,8 @@
+# サーバーの実績YAMLなど、公開しないものをうっかりpushしない
+*.yml
+*.yaml
+*.db
+__pycache__/
+
+# NEW/FIXED判定用の記録(非公開)
+history.local.json
