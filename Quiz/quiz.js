@@ -494,9 +494,16 @@
         : quiz.answer.display || quiz.answer.reading;
       el.querySelector(".a").textContent = `正解: ${ans}`;
       const stats = el.querySelector(".stats");
-      const rate = quiz.playCount ? `正答率 ${Math.round((quiz.correctCount / quiz.playCount) * 100)}%` : "まだ出題されていません";
+      const rate = quiz.playCount ? `正答率 ${Math.round((quiz.correctCount / quiz.playCount) * 100)}%` : null;
       const stars = quiz.ratingCount ? `★ ${Number(quiz.ratingAvg).toFixed(1)}(${quiz.ratingCount}件)` : null;
-      for (const txt of [`#${quiz.id}`, stars, quiz.playCount ? `出題 ${quiz.playCount}回` : null, rate,
+      if (quiz.reported) {
+        el.classList.add("reported");
+        const b = document.createElement("span");
+        b.className = "badge flag"; b.textContent = "通報済み(出題停止中)";
+        b.title = "3人から通報されたため、早押しクイズ大会では出題されません。";
+        el.querySelector(".meta").prepend(b);
+      }
+      for (const txt of [`#${quiz.id}`, `出題 ${quiz.playCount}回`, rate, stars,
                          `作成 ${formatDate(quiz.createdAt)}`, quiz.updatedAt ? `編集 ${formatDate(quiz.updatedAt)}` : null]) {
         if (!txt) continue;
         const b = document.createElement("span");
@@ -552,7 +559,7 @@
 
     const cards = $("stats-cards");
     cards.textContent = "";
-    for (const [num, label] of [[data.total, "問題の総数"], [data.authorCount, "作った人"], [data.tags.length, "タグの種類"]]) {
+    for (const [num, label] of [[data.total, "問題の総数"], [data.playTotal || 0, "出題された回数"], [data.authorCount, "作った人"], [data.tags.length, "タグの種類"]]) {
       const el = document.createElement("div");
       el.className = "stat";
       el.innerHTML = "<b></b><span></span>";
