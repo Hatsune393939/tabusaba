@@ -1,12 +1,9 @@
 /* ミニゲームサーバー「たぶ鯖」共通スタイル(Main / Quiz)
-   実績一覧(Achievements)と同じ色・角丸・フォントに揃えています */
+   実績一覧(Achievements)と同じ色・角丸・フォントに揃えています。ダークモードのみ */
 :root {
+  color-scheme: dark;
   --bg: #1b1d23; --panel: #262932; --panel2: #2f333f; --text: #e8e9ee; --muted: #9aa0ae;
   --accent: #6cc070; --accent-ink: #10230f; --line: #3a3f4d; --danger: #ef7a6e;
-}
-@media (prefers-color-scheme: light) {
-  :root { --bg: #f2f3f6; --panel: #fff; --panel2: #eceef3; --text: #1f2330; --muted: #5d6475;
-          --accent: #2f8f3a; --accent-ink: #fff; --line: #d6d9e2; --danger: #c0392b; }
 }
 * { box-sizing: border-box; }
 body {

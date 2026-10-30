@@ -1,9 +1,7 @@
 :root {
+  color-scheme: dark;
   --bg: #1b1d23; --panel: #262932; --panel2: #2f333f; --text: #e8e9ee; --muted: #9aa0ae;
   --accent: #6cc070; --line: #3a3f4d;
-}
-@media (prefers-color-scheme: light) {
-  :root { --bg: #f2f3f6; --panel: #fff; --panel2: #eceef3; --text: #1f2330; --muted: #5d6475; --accent: #2f8f3a; --line: #d6d9e2; }
 }
 * { box-sizing: border-box; }
 body { margin: 0; background: var(--bg); color: var(--text); font-family: system-ui, "Hiragino Sans", "Yu Gothic UI", "Noto Sans JP", sans-serif; line-height: 1.6; }
@@ -97,7 +95,6 @@ dialog::backdrop { background: rgba(0,0,0,.55); }
 .switchrow { display: inline-flex; align-items: center; gap: 10px; }
 .switchrow label { cursor: pointer; color: var(--text); font-size: .95rem; user-select: none; }
 .ios { width: 51px; height: 31px; border-radius: 999px; border: 0; padding: 0; position: relative; cursor: pointer; background: #8e8e93; transition: background .2s; flex: none; }
-@media (prefers-color-scheme: light) { .ios { background: #d1d1d6; } }
 .ios .knob { position: absolute; top: 2px; left: 2px; width: 27px; height: 27px; border-radius: 50%; background: #fff; box-shadow: 0 3px 8px rgba(0,0,0,.25), 0 1px 1px rgba(0,0,0,.2); transition: transform .2s; }
 .ios.on { background: #34c759; }
 .ios.on .knob { transform: translateX(20px); }
