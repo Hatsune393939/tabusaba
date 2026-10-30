@@ -111,7 +111,7 @@
 
   function haystack(a) {
     return [stripCodes(a.name), (a.conditions || []).map(stripCodes).join(' '),
-      a.flavorTexts.join(' '), a.messages.map((m) => m.text + ' ' + m.author).join(' '),
+      a.flavorTexts.map(stripCodes).join(' '), a.messages.map((m) => m.text + ' ' + m.author).join(' '),
       a.category, a.number].join(' ').toLowerCase();
   }
 
@@ -139,7 +139,8 @@
     const prefixes = a.prefixes.map((p) => `<span class="badge prefix">称号 ${mcToHtml(p)}</span>`).join('');
     const cond = a.conditions && a.conditions.length
       ? `<div class="cond-wrap"><ul>${a.conditions.map((c) => `<li>${mcToHtml(c)}</li>`).join('')}</ul></div>` : '';
-    const flavor = a.flavorTexts.length ? `<p class="flavor">${a.flavorTexts.map(esc).join('<br>')}</p>` : '';
+    // フレーバーテキストは基本を &7&o(灰色・斜体)にし、行の中に色コードがあればそちらを優先する
+    const flavor = a.flavorTexts.length ? `<p class="flavor">${a.flavorTexts.map((f) => mcToHtml('&7&o' + f)).join('<br>')}</p>` : '';
     const msgs = a.messages.length
       ? `<div class="msgs">${a.messages.map((m) =>
         `<div class="msg">${mcToHtml(m.text)}${m.author ? `<span class="by">— ${esc(m.author)}</span>` : ''}</div>`).join('')}</div>` : '';

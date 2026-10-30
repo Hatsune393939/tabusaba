@@ -1,18 +1,10 @@
-// サイト全体の設定。ここだけ書き換えれば各ページに反映されます。
+// サイトの設定(あまり変えないもの)
+// バージョン・最終更新日時・サーバー情報は site.json、ジャンルは genres.json で管理しています。
+// この2つは毎回読み直すので、push すればすぐ反映されます。
 window.TABUSABA = {
-  // サイトのバージョンと最終更新日(更新したらここを書き換える)
-  SITE_VERSION: "1.1",
-  SITE_UPDATED: "2026-10-29",
-
-  // サーバー情報(トップページの下に表示)
-  SERVER_IP: "1001wantyanserver.mydns.jp",
-  SERVER_VERSIONS: "Java版 1.21.11 〜 最新バージョン",
-
   // Web側API(Cloudflare Workers)のURL。末尾の / は付けない。
   // 空にすると「お試しモード」になり、作成した問題はJSONで表示されるだけになります。
   API_BASE: "https://tabusaba-api.wanchan0tabu.workers.dev",
-
-  // 早押しクイズのジャンルは Main/genres.json で管理しています
 
   QUIZ: {
     QUESTION_MAX: 32,    // 問題文の最大文字数(Workers側の src/index.js の QUESTION_MAX と揃える)

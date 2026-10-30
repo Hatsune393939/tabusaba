@@ -576,7 +576,10 @@
       if (r.count !== prev) { place = i + 1; prev = r.count; }  // 同数は同順位
       const li = document.createElement("li");
       if (place <= 3) li.className = `top${place}`;
-      li.innerHTML = '<span class="place"></span><img alt="" width="28" height="28"><span class="name"></span><span class="n"></span>';
+      li.innerHTML = `<button type="button" class="rank-row" aria-expanded="false">
+          <span class="place"></span><img alt="" width="28" height="28"><span class="name"></span><span class="n"></span>
+        </button>
+        <ul class="genre-bars rank-genres" hidden></ul>`;
       li.querySelector(".place").textContent = `${place}位`;
       const img = li.querySelector("img");
       img.src = `https://minotar.net/helm/${encodeURIComponent(r.name)}/56.png`;
@@ -585,6 +588,25 @@
       li.querySelector(".name").textContent = r.name;
       li.querySelector(".n").textContent = `${r.count}問`;
       if (state.user && r.name === state.user.minecraftName) li.classList.add("me-row");
+
+      // 名前を押すと、その人が作った問題のジャンル別の数を開閉する
+      const btn = li.querySelector(".rank-row");
+      const detail = li.querySelector(".rank-genres");
+      btn.setAttribute("aria-label", `${r.name} のジャンル別の問題数を表示`);
+      const gmax = Math.max(1, ...r.genres.map((g) => g.count));
+      for (const g of r.genres) {
+        const gl = document.createElement("li");
+        gl.innerHTML = '<span class="g"></span><span class="bar"><i></i></span><span class="n"></span>';
+        gl.querySelector(".g").textContent = g.genre;
+        gl.querySelector("i").style.width = `${(g.count / gmax) * 100}%`;
+        gl.querySelector(".n").textContent = `${g.count}問`;
+        detail.appendChild(gl);
+      }
+      btn.addEventListener("click", () => {
+        const open = btn.getAttribute("aria-expanded") !== "true";
+        btn.setAttribute("aria-expanded", String(open));
+        detail.hidden = !open;
+      });
       rank.appendChild(li);
     });
 

@@ -4,11 +4,53 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>ミニゲームサーバー「たぶ鯖」</title>
-<link rel="icon" type="image/png" href="Main/icon.png">
-<meta http-equiv="refresh" content="0; url=Main/">
-<link rel="canonical" href="Main/">
+<meta name="description" content="実績の数が500以上もあるミニゲームサーバー「たぶ鯖」。早押しクイズの問題作成、実績一覧、Wikiはこちらから。">
+<link rel="icon" type="image/png" href="icon.png">
+<link rel="stylesheet" href="style.css?v=20261030">
+<script src="config.js?v=20261030"></script>
+<script src="site.js?v=20261030" defer></script>
 </head>
 <body>
-<p><a href="Main/">ミニゲームサーバー「たぶ鯖」のトップページへ</a></p>
+<main class="wrap">
+  <header class="hero">
+    <img class="pixel" src="icon.png" alt="たぶ鯖のアイコン" width="104" height="104">
+    <div>
+      <h1>ミニゲームサーバー「たぶ鯖」 <span class="ver" data-site="version"></span></h1>
+      <p class="lead">実績の数が500以上もあるミニゲームサーバー。</p>
+      <p class="updated">最終更新: <span data-site="updated">-</span></p>
+    </div>
+  </header>
+
+  <nav class="menu" aria-label="メニュー">
+    <a href="../Quiz/">
+      <h2>早押しクイズ 問題作成</h2>
+      <p>早押しクイズ大会で出題される問題を作れます。ゲーム内で /mclink したDiscordアカウントでログインしてください。</p>
+    </a>
+    <a href="../Achievements/">
+      <h2>実績一覧</h2>
+      <p>各ミニゲームの実績と、その達成条件を確認できます。一部の実績は条件が秘密です。</p>
+    </a>
+    <a href="https://w.atwiki.jp/tabusaba/" target="_blank" rel="noopener">
+      <h2>Wiki</h2>
+      <p>ミニゲームのルールや遊び方、サーバーの情報をまとめています。</p>
+      <span class="ext">@wikiで開く ↗</span>
+    </a>
+  </nav>
+
+  <section class="server card" aria-labelledby="server-h">
+    <h2 id="server-h">サーバーに参加する</h2>
+    <dl>
+      <div>
+        <dt>サーバーアドレス</dt>
+        <dd><code data-site="ip"></code> <button type="button" class="btn small" id="copy-ip">コピー</button></dd>
+      </div>
+      <div>
+        <dt>対応バージョン</dt>
+        <dd data-site="versions"></dd>
+      </div>
+    </dl>
+  </section>
+</main>
+<footer class="wrap">たぶ鯖は Minecraft の非公式サーバーです。Mojang Studios とは関係ありません。</footer>
 </body>
 </html>
