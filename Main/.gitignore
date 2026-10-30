@@ -1,0 +1,13 @@
+# サーバーのYAMLやDBなど、公開しないもの
+*.yml
+*.yaml
+*.db
+__pycache__/
+
+# 実績サイトの NEW/FIXED 判定用の記録(非公開)
+Achievements/history.local.json
+
+# OS・エディタのゴミ
+Thumbs.db
+desktop.ini
+.DS_Store
