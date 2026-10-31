@@ -183,3 +183,17 @@ pre.out { white-space: pre-wrap; word-break: break-all; font-size: .8rem; paddin
 .taglist { display: flex; flex-wrap: wrap; gap: 6px; }
 .taglist .tag { display: inline-flex; align-items: center; gap: 6px; background: var(--panel2); border-radius: 999px; padding: 3px 6px 3px 12px; font-size: .88rem; }
 .taglist .tag small { background: var(--bg); border-radius: 999px; padding: 0 8px; color: var(--muted); font-size: .75rem; }
+
+/* 作った問題: 評価の内訳 */
+.rating-panel { background: var(--bg); border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; }
+.rating-panel[hidden] { display: none; }
+.rating-head { display: flex; align-items: baseline; gap: 10px; margin-bottom: 8px; }
+.rating-head .avg { font-size: 1.6rem; font-weight: 700; line-height: 1; }
+.rating-head .stars { color: #f0c43c; letter-spacing: .05em; }
+.rating-bars { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; max-width: 420px; }
+.rating-bars li { display: grid; grid-template-columns: 36px 1fr 44px; gap: 10px; align-items: center; font-size: .85rem; }
+.rating-bars .s { color: #f0c43c; }
+.rating-bars .bar { height: 8px; background: var(--panel2); border-radius: 999px; overflow: hidden; }
+.rating-bars .bar i { display: block; height: 100%; background: #f0c43c; border-radius: 999px; }
+.rating-bars .n { text-align: right; color: var(--muted); font-variant-numeric: tabular-nums; }
+.qitem .btn.rate[aria-expanded="true"] { border-color: var(--accent); }

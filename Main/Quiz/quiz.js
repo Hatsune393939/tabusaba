@@ -476,7 +476,9 @@
         <div class="q"></div>
         <div class="a"></div>
         <div class="meta stats"></div>
+        <div class="rating-panel" hidden></div>
         <div class="ops">
+          <button type="button" class="btn small rate" aria-expanded="false"></button>
           <button type="button" class="btn small edit">編集</button>
           <button type="button" class="btn small danger del">削除</button>
         </div>`;
@@ -510,10 +512,58 @@
         b.className = "badge"; b.textContent = txt;
         stats.appendChild(b);
       }
+      // 評価: ボタンで星ごとの内訳を開閉する
+      const rateBtn = el.querySelector(".rate");
+      const panel = el.querySelector(".rating-panel");
+      rateBtn.textContent = quiz.ratingCount ? `評価 ★${Number(quiz.ratingAvg).toFixed(1)}` : "評価";
+      renderRatingPanel(panel, quiz);
+      rateBtn.addEventListener("click", () => {
+        const open = rateBtn.getAttribute("aria-expanded") !== "true";
+        rateBtn.setAttribute("aria-expanded", String(open));
+        panel.hidden = !open;
+      });
       el.querySelector(".edit").addEventListener("click", () => startEdit(quiz));
       el.querySelector(".del").addEventListener("click", () => removeQuiz(quiz));
       box.appendChild(el);
     }
+  }
+
+  function renderRatingPanel(panel, quiz) {
+    panel.textContent = "";
+    const dist = quiz.ratingDist || [0, 0, 0, 0, 0];
+    const total = dist.reduce((a, b) => a + b, 0);
+    if (!total) {
+      const p = document.createElement("p");
+      p.className = "hint"; p.style.margin = "0";
+      p.textContent = quiz.playCount
+        ? "まだ評価されていません。出題されたあと、プレイヤーが星1〜5で評価できます。"
+        : "まだ出題されていないので、評価はありません。";
+      panel.appendChild(p);
+      return;
+    }
+    const avg = dist.reduce((s, n, i) => s + n * (i + 1), 0) / total;
+    const head = document.createElement("div");
+    head.className = "rating-head";
+    head.innerHTML = '<span class="avg"></span><span class="stars" aria-hidden="true"></span><span class="hint"></span>';
+    head.querySelector(".avg").textContent = avg.toFixed(1);
+    const full = Math.round(avg);
+    head.querySelector(".stars").textContent = "★".repeat(full) + "☆".repeat(5 - full);
+    head.querySelector(".hint").textContent = `${total}件の評価`;
+    panel.appendChild(head);
+    const max = Math.max(...dist);
+    const list = document.createElement("ul");
+    list.className = "rating-bars";
+    for (let s = 5; s >= 1; s--) {
+      const n = dist[s - 1];
+      const li = document.createElement("li");
+      li.innerHTML = '<span class="s"></span><span class="bar"><i></i></span><span class="n"></span>';
+      li.querySelector(".s").textContent = `★${s}`;
+      li.querySelector("i").style.width = `${max ? (n / max) * 100 : 0}%`;
+      li.querySelector(".n").textContent = `${n}件`;
+      li.setAttribute("aria-label", `星${s}: ${n}件`);
+      list.appendChild(li);
+    }
+    panel.appendChild(list);
   }
 
   async function removeQuiz(quiz) {
