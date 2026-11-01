@@ -3,11 +3,13 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' https://cdn.jsdelivr.net; style-src 'self'; style-src-attr 'unsafe-inline'; img-src 'self' https://minotar.net; connect-src 'self' https://tabusaba-api.wanchan0tabu.workers.dev https://api.github.com; base-uri 'none'; form-action 'none'; object-src 'none'">
+<meta name="referrer" content="strict-origin-when-cross-origin">
 <title>早押しクイズ 問題作成｜たぶ鯖</title>
 <link rel="icon" type="image/png" href="../Main/icon.png">
-<link rel="stylesheet" href="../Main/style.css?v=2026103003">
-<script src="https://cdn.jsdelivr.net/npm/wanakana@5.3.1/wanakana.min.js"></script>
-<script src="../Main/config.js?v=20261030"></script>
+<link rel="stylesheet" href="../Main/style.css?v=2026110101">
+<script src="https://cdn.jsdelivr.net/npm/wanakana@5.3.1/wanakana.min.js" integrity="sha384-ei/skGdXfWHx8zodPeKIHWR7N4qSpIlj3wBwEPMPfw2MvsbEJSFrPMUCPXnEuKSw" crossorigin="anonymous"></script>
+<script src="../Main/config.js?v=2026110101"></script>
 <script src="../Main/site.js?v=2026103002" defer></script>
 </head>
 <body>
@@ -79,12 +81,6 @@
         <input id="question" type="text" required placeholder="例: 日本の首都はどこ？" autocomplete="off">
         <div class="hint">早押しでは左から1文字ずつ表示されます。答えがわかる部分は、なるべく後ろに置くのがおすすめです。</div>
       </div>
-
-      <div class="field" style="margin-bottom:0">
-        <span class="label">出題プレビュー</span>
-        <div class="preview-screen" id="preview" aria-live="off"></div>
-        <div style="margin-top:8px"><button type="button" class="btn small" id="preview-btn">プレビューを再生</button></div>
-      </div>
     </section>
 
     <section class="card">
@@ -134,6 +130,6 @@
   </section>
   </div>
 </div>
-<script src="quiz.js?v=20261030"></script>
+<script src="quiz.js?v=2026110101"></script>
 </body>
 </html>

@@ -277,32 +277,6 @@
     el.style.color = n > Q.QUESTION_MAX ? "var(--danger)" : "";
   }
 
-  // ---- 出題プレビュー(左から1文字ずつ) ----
-  // ボタンを押したときだけ再生する。OSの「アニメーションを減らす」設定でも再生する
-  let timer = null;
-  function showPreviewText(text) {
-    clearInterval(timer);
-    $("preview").textContent = text || "問題文を入力して「プレビューを再生」を押すと、ここで確認できます。";
-  }
-  function playPreview() {
-    clearInterval(timer);
-    const chars = [...$("question").value.trim()];
-    const screen = $("preview");
-    if (!chars.length) { showPreviewText(""); return; }
-    let i = 0;
-    const draw = () => {
-      screen.textContent = chars.slice(0, i).join("");
-      if (i < chars.length) {
-        const c = document.createElement("span");
-        c.className = "cursor";
-        screen.appendChild(c);
-      }
-    };
-    draw();
-    timer = setInterval(() => { i++; draw(); if (i >= chars.length) clearInterval(timer); }, Q.REVEAL_MS);
-    $("preview-btn").textContent = "もう一度再生";
-  }
-
   // ---- 入力チェック ----
   function validate() {
     const q = $("question").value.trim();
@@ -383,8 +357,7 @@
     state.tags = []; state.alts = [];
     state.manualAccepted = []; state.removedAuto = new Set();
     $("form-error").textContent = "";
-    renderTags(); renderAlts(); renderAccepted(); renderCount(); showPreviewText("");
-    $("preview-btn").textContent = "プレビューを再生";
+    renderTags(); renderAlts(); renderAccepted(); renderCount();
   }
 
   function fillForm(quiz) {
@@ -476,7 +449,9 @@
         <div class="q"></div>
         <div class="a"></div>
         <div class="meta stats"></div>
+        <div class="rating-panel" hidden></div>
         <div class="ops">
+          <button type="button" class="btn small rate" aria-expanded="false"></button>
           <button type="button" class="btn small edit">編集</button>
           <button type="button" class="btn small danger del">削除</button>
         </div>`;
@@ -510,10 +485,58 @@
         b.className = "badge"; b.textContent = txt;
         stats.appendChild(b);
       }
+      // 評価: ボタンで星ごとの内訳を開閉する
+      const rateBtn = el.querySelector(".rate");
+      const panel = el.querySelector(".rating-panel");
+      rateBtn.textContent = quiz.ratingCount ? `評価 ★${Number(quiz.ratingAvg).toFixed(1)}` : "評価";
+      renderRatingPanel(panel, quiz);
+      rateBtn.addEventListener("click", () => {
+        const open = rateBtn.getAttribute("aria-expanded") !== "true";
+        rateBtn.setAttribute("aria-expanded", String(open));
+        panel.hidden = !open;
+      });
       el.querySelector(".edit").addEventListener("click", () => startEdit(quiz));
       el.querySelector(".del").addEventListener("click", () => removeQuiz(quiz));
       box.appendChild(el);
     }
+  }
+
+  function renderRatingPanel(panel, quiz) {
+    panel.textContent = "";
+    const dist = quiz.ratingDist || [0, 0, 0, 0, 0];
+    const total = dist.reduce((a, b) => a + b, 0);
+    if (!total) {
+      const p = document.createElement("p");
+      p.className = "hint"; p.style.margin = "0";
+      p.textContent = quiz.playCount
+        ? "まだ評価されていません。出題されたあと、プレイヤーが星1〜5で評価できます。"
+        : "まだ出題されていないので、評価はありません。";
+      panel.appendChild(p);
+      return;
+    }
+    const avg = dist.reduce((s, n, i) => s + n * (i + 1), 0) / total;
+    const head = document.createElement("div");
+    head.className = "rating-head";
+    head.innerHTML = '<span class="avg"></span><span class="stars" aria-hidden="true"></span><span class="hint"></span>';
+    head.querySelector(".avg").textContent = avg.toFixed(1);
+    const full = Math.round(avg);
+    head.querySelector(".stars").textContent = "★".repeat(full) + "☆".repeat(5 - full);
+    head.querySelector(".hint").textContent = `${total}件の評価`;
+    panel.appendChild(head);
+    const max = Math.max(...dist);
+    const list = document.createElement("ul");
+    list.className = "rating-bars";
+    for (let s = 5; s >= 1; s--) {
+      const n = dist[s - 1];
+      const li = document.createElement("li");
+      li.innerHTML = '<span class="s"></span><span class="bar"><i></i></span><span class="n"></span>';
+      li.querySelector(".s").textContent = `★${s}`;
+      li.querySelector("i").style.width = `${max ? (n / max) * 100 : 0}%`;
+      li.querySelector(".n").textContent = `${n}件`;
+      li.setAttribute("aria-label", `星${s}: ${n}件`);
+      list.appendChild(li);
+    }
+    panel.appendChild(list);
   }
 
   async function removeQuiz(quiz) {
@@ -641,7 +664,6 @@
   ["ans-display", "ans-reading"].forEach((id) => $(id).addEventListener("input", renderAccepted));
   $("question").setAttribute("maxlength", Q.QUESTION_MAX);
   $("question").addEventListener("input", renderCount);
-  $("preview-btn").addEventListener("click", playPreview);
   $("add-alt").addEventListener("click", () => { state.alts.push({ display: "", reading: "" }); renderAlts(); });
   document.querySelectorAll("#tabs button").forEach((b) => b.addEventListener("click", () => {
     showView(b.dataset.view);
@@ -685,6 +707,6 @@
   $("new-btn").addEventListener("click", () => { cancelEdit(); window.scrollTo(0, 0); });
   $("to-mine-btn").addEventListener("click", () => { cancelEdit(); showView("mine"); window.scrollTo(0, 0); });
 
-  renderTags(); renderAlts(); renderAccepted(); renderCount(); showPreviewText("");
+  renderTags(); renderAlts(); renderAccepted(); renderCount();
   loadGenres().then(loadUser);
 })();

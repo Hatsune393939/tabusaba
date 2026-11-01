@@ -91,12 +91,6 @@ input[type=text]:focus, select:focus { border-color: var(--accent); outline: non
 .alt-item { display: grid; grid-template-columns: 1fr 1fr auto; gap: 8px; }
 @media (max-width: 560px) { .alt-item { grid-template-columns: 1fr; } }
 
-/* 出題プレビュー */
-.preview-screen {
-  font-size: 1.25rem; font-weight: 600; letter-spacing: .04em; padding: 14px 16px; min-height: 60px;
-  background: #1a1a1a; color: #f0f0f0; border-radius: 8px; word-break: break-all;
-}
-.preview-screen .cursor { display: inline-block; width: .55em; height: 1.1em; vertical-align: -.15em; background: #6cc070; border-radius: 2px; }
 .notice { padding: 12px 14px; margin-bottom: 14px; font-size: .9rem; border-radius: 12px; border: 1px solid var(--line); background: var(--panel2); }
 .error { color: var(--danger); font-size: .9rem; margin-top: 6px; }
 .login { display: flex; align-items: center; justify-content: space-between; gap: 14px; flex-wrap: wrap; }
