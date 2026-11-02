@@ -26,7 +26,11 @@
     invalid_tags: "タグの数か長さが多すぎます。",
     invalid_alternatives: "別解の入力が正しくありません。",
     invalid_accepted: "正解として受け付ける入力を確認してください。",
-    too_many: "今日はこれ以上投稿できません(1日250問まで)。また明日投稿してください。",
+    too_many: (b) => b && b.limit !== undefined
+      ? `投稿できる数の上限に達しました(24時間で${b.limit}問まで、今${b.count}問)。最初に投稿した問題から24時間たつと、また投稿できます。`
+      : "投稿できる数の上限に達しました。時間をおいて投稿してください。",
+    too_many_edits: "今日はこれ以上編集できません(1日100回まで)。また明日編集してください。",
+    invalid_chars: "使えない文字(§ や見えない文字など)が入っています。",
     not_found: "この問題は見つかりませんでした。すでに削除されている可能性があります。"
   };
 
@@ -116,8 +120,17 @@
       storage.clear(); state.user = null; renderLogin();
       throw new Error("ログインの有効期限が切れました。ログインし直してください。");
     }
-    if (!res.ok) throw new Error(ERRORS[body?.error] || `うまくいきませんでした(エラー ${res.status})。時間をおいてもう一度試してください。`);
+    if (!res.ok) {
+      const m = ERRORS[body?.error];
+      const err = new Error((typeof m === "function" ? m(body) : m) || `うまくいきませんでした(エラー ${res.status})。時間をおいてもう一度試してください。`);
+      err.body = body;
+      throw err;
+    }
     return body;
+  }
+
+  async function refreshQuota() {
+    try { state.user = await api("/api/me"); renderLogin(); } catch (e) { /* 表示が古いだけなので無視 */ }
   }
 
   async function loadUser() {
@@ -150,7 +163,9 @@
       const t = document.createElement("div");
       t.innerHTML = `<strong></strong> としてログイン中<div class="hint"></div>`;
       t.querySelector("strong").textContent = state.user.minecraftName;
-      t.querySelector(".hint").textContent = `Discord: ${state.user.discordName}`;
+      const quota = state.user.quizLimit !== undefined
+        ? ` ・ 24時間の投稿 ${state.user.quizCount24h} / ${state.user.quizLimit}問` : "";
+      t.querySelector(".hint").textContent = `Discord: ${state.user.discordName}${quota}`;
       me.append(img, t);
       const out = document.createElement("button");
       out.type = "button"; out.className = "btn small"; out.textContent = "ログアウト";
@@ -243,7 +258,7 @@
       }), input);
     }
     input.disabled = state.tags.length >= Q.TAGS_MAX;
-    input.placeholder = input.disabled ? "これ以上追加できません" : "入力してEnter";
+    input.placeholder = input.disabled ? "これ以上追加できません" : "タグを入力";
   }
 
   function renderAlts() {
@@ -322,6 +337,10 @@
 
   async function submit(e) {
     e.preventDefault();
+    // スマホではタグなどの入力欄で Enter(完了)を押すと、フォームの送信になってしまう。その場合は追加として扱う
+    const active = document.activeElement;
+    if (active === $("tag-input")) { addTagsFrom(active, true); return; }
+    if (active === $("accept-input")) { addAcceptedFrom(active); return; }
     const err = validate();
     $("form-error").textContent = err;
     if (err) return;
@@ -341,6 +360,7 @@
       } else {
         await api("/api/quizzes", { method: "POST", body: JSON.stringify(data) });
         showResult("問題を投稿しました", "次の早押しクイズ大会から出題されるようになります。");
+        refreshQuota();
       }
       loadMine();
     } catch (ex) {
@@ -357,7 +377,7 @@
     state.tags = []; state.alts = [];
     state.manualAccepted = []; state.removedAuto = new Set();
     $("form-error").textContent = "";
-    renderTags(); renderAlts(); renderAccepted(); renderCount();
+    renderTags(); renderAlts(); renderAccepted(); renderCount(); fitQuestion();
   }
 
   function fillForm(quiz) {
@@ -373,6 +393,7 @@
     state.manualAccepted = quiz.accepted.filter((v) => !auto.includes(v));
     state.removedAuto = new Set(auto.filter((v) => !quiz.accepted.includes(v)));
     renderTags(); renderAlts(); renderAccepted(); renderCount();
+    requestAnimationFrame(fitQuestion);
   }
 
   function startEdit(quiz) {
@@ -441,7 +462,22 @@
       return;
     }
     const genre = $("mine-genre").value;
-    for (const quiz of state.mine.filter((q) => !genre || q.genre === genre)) {
+    // 検索: 問題文・答え(漢字と読み)・別解・タグ・受け付ける入力のどれかに含まれていれば表示する
+    const words = $("mine-search").value.split(/[\s　]+/).map(normalize).filter(Boolean);
+    const haystack = (q) => normalize([
+      q.question, q.answer.display, q.answer.reading,
+      ...q.alternatives.flatMap((a) => [a.display, a.reading]),
+      ...q.tags, ...q.accepted
+    ].join(" "));
+    const shown = state.mine.filter((q) => (!genre || q.genre === genre) && words.every((w) => haystack(q).includes(w)));
+    $("mine-hit").textContent = (genre || words.length) ? `${shown.length}件 / 全${state.mine.length}件` : "";
+    if (!shown.length) {
+      const p = document.createElement("p");
+      p.className = "empty";
+      p.textContent = "条件に合う問題がありません。検索の言葉やジャンルを変えてみてください。";
+      box.appendChild(p);
+    }
+    for (const quiz of shown) {
       const el = document.createElement("article");
       el.className = "qitem";
       el.innerHTML = `
@@ -566,36 +602,33 @@
     document.querySelectorAll("#tabs button").forEach((b) => b.setAttribute("aria-selected", String(b.dataset.view === name)));
   }
 
-  // ---- みんなの統計(問題の中身は表示しない) ----
-  async function loadStats() {
-    if (DEMO) { $("stats-note").textContent = "お試しモードでは統計を表示できません。"; return; }
-    let data;
-    try {
-      const res = await fetch(`${API}/api/stats`);
-      if (!res.ok) throw new Error();
-      data = await res.json();
-    } catch (e) {
-      $("stats-note").textContent = "統計を読み込めませんでした。時間をおいてもう一度開いてください。";
-      return;
-    }
-    $("stats-note").textContent = "数字は1分ほど遅れて反映されることがあります。";
-
-    const cards = $("stats-cards");
-    cards.textContent = "";
-    for (const [num, label] of [[data.total, "問題の総数"], [data.playTotal || 0, "出題された回数"], [data.authorCount, "作った人"], [data.tags.length, "タグの種類"]]) {
-      const el = document.createElement("div");
-      el.className = "stat";
-      el.innerHTML = "<b></b><span></span>";
-      el.querySelector("b").textContent = num.toLocaleString("ja-JP");
-      el.querySelector("span").textContent = label;
-      cards.appendChild(el);
-    }
-
+  // ---- 作成数ランキング(全期間 / 今週 / 今日) ----
+  let rankPeriod = "all";
+  function jstLabel(iso, withDow) {
+    const d = new Date(new Date(iso).getTime() + 9 * 3600 * 1000);
+    const dow = "日月火水木金土"[d.getUTCDay()];
+    return `${d.getUTCMonth() + 1}/${d.getUTCDate()}${withDow ? `(${dow})` : ""}`;
+  }
+  function renderRanking() {
+    const data = state.stats;
+    if (!data) return;
+    const period = rankPeriod;
+    const list = (period === "today" ? data.rankingToday : period === "week" ? data.rankingWeek : data.ranking) || [];
+    document.querySelectorAll("#rank-period button").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.period === period)));
+    $("rank-range").textContent =
+      period === "today" && data.todayFrom ? `${jstLabel(data.todayFrom, true)} に作られた問題` :
+      period === "week" && data.weekFrom ? `${jstLabel(data.weekFrom, true)}〜 に作られた問題(日曜はじまり)` :
+      "これまでに作られたすべての問題";
     const rank = $("stats-ranking");
     rank.textContent = "";
-    if (!data.ranking.length) rank.innerHTML = '<li class="empty">まだ誰も問題を作っていません。</li>';
+    if (!list.length) {
+      const li = document.createElement("li");
+      li.className = "empty";
+      li.textContent = { all: "まだ誰も問題を作っていません。", week: "今週はまだ誰も問題を作っていません。", today: "今日はまだ誰も問題を作っていません。" }[period];
+      rank.appendChild(li);
+    }
     let place = 0, prev = null;
-    data.ranking.forEach((r, i) => {
+    list.forEach((r, i) => {
       if (r.count !== prev) { place = i + 1; prev = r.count; }  // 同数は同順位
       const li = document.createElement("li");
       if (place <= 3) li.className = `top${place}`;
@@ -632,6 +665,36 @@
       });
       rank.appendChild(li);
     });
+
+  }
+
+  // ---- みんなの統計(問題の中身は表示しない) ----
+  async function loadStats() {
+    if (DEMO) { $("stats-note").textContent = "お試しモードでは統計を表示できません。"; return; }
+    let data;
+    try {
+      const res = await fetch(`${API}/api/stats`);
+      if (!res.ok) throw new Error();
+      data = await res.json();
+    } catch (e) {
+      $("stats-note").textContent = "統計を読み込めませんでした。時間をおいてもう一度開いてください。";
+      return;
+    }
+    $("stats-note").textContent = "数字は1分ほど遅れて反映されることがあります。";
+
+    const cards = $("stats-cards");
+    cards.textContent = "";
+    for (const [num, label] of [[data.total, "問題の総数"], [data.playTotal || 0, "出題された回数"], [data.authorCount, "作った人"], [data.tags.length, "タグの種類"]]) {
+      const el = document.createElement("div");
+      el.className = "stat";
+      el.innerHTML = "<b></b><span></span>";
+      el.querySelector("b").textContent = num.toLocaleString("ja-JP");
+      el.querySelector("span").textContent = label;
+      cards.appendChild(el);
+    }
+
+    state.stats = data;
+    renderRanking();
 
     const gbox = $("stats-genres");
     gbox.textContent = "";
@@ -671,33 +734,80 @@
     if (b.dataset.view === "stats") loadStats();
   }));
 
-  // 日本語入力の変換確定のEnterでは追加しない(isComposing)
-  $("tag-input").addEventListener("keydown", (e) => {
-    const input = e.target;
-    if (e.isComposing) return;
-    if (e.key === "Enter" || e.key === "," || e.key === "、") {
-      e.preventDefault();
-      const v = input.value.trim().replace(/[,、]/g, "");
-      if (v && !state.tags.includes(v) && [...v].length <= Q.TAG_LEN_MAX && state.tags.length < Q.TAGS_MAX) {
-        state.tags.push(v); input.value = ""; renderTags(); input.focus();
-      }
-    } else if (e.key === "Backspace" && !input.value && state.tags.length) {
-      state.tags.pop(); renderTags();
+  // ---- タグ・受理表記の追加(パソコンとスマホの両方に対応) ----
+  // スマホの日本語入力は Enter のキー情報が取れないことが多いので、「追加」ボタン・区切り文字・送信の横取りでも追加する
+  const TAG_SEP = /[,、，\s　]/;
+  function addTagsFrom(input, includeLast) {
+    const parts = input.value.split(TAG_SEP);
+    // 最後の部分はまだ入力中かもしれないので、includeLast のときだけ追加する
+    const rest = includeLast ? "" : parts.pop();
+    let rejected = "";
+    for (const raw of parts) {
+      const v = raw.trim();
+      if (!v || state.tags.includes(v)) continue;
+      if (state.tags.length >= Q.TAGS_MAX) { rejected = `タグは${Q.TAGS_MAX}つまでです。`; break; }
+      if ([...v].length > Q.TAG_LEN_MAX) { rejected = `タグは${Q.TAG_LEN_MAX}文字までです。`; continue; }
+      state.tags.push(v);
     }
-  });
-  $("accept-input").addEventListener("keydown", (e) => {
-    if (e.isComposing || e.key !== "Enter") return;
-    e.preventDefault();
-    const v = normalize(e.target.value);
+    input.value = rest;
+    $("form-error").textContent = rejected;
+    renderTags();
+    if (!input.disabled) input.focus();
+  }
+  function addAcceptedFrom(input) {
+    const v = normalize(input.value);
     if (v && !state.manualAccepted.includes(v)) {
       state.manualAccepted.push(v);
       state.removedAuto.delete(v);
     }
-    e.target.value = "";
+    input.value = "";
     renderAccepted();
+    input.focus();
+  }
+
+  $("tag-input").addEventListener("keydown", (e) => {
+    const input = e.target;
+    if (e.isComposing || e.keyCode === 229) return;   // 日本語の変換中
+    if (e.key === "Enter") { e.preventDefault(); addTagsFrom(input, true); }
+    else if (e.key === "Backspace" && !input.value && state.tags.length) { state.tags.pop(); renderTags(); }
   });
+  // 「、」やスペースを打ったら、その前までをタグにする(変換が確定してから)
+  $("tag-input").addEventListener("input", (e) => {
+    if (e.isComposing) return;
+    if (TAG_SEP.test(e.target.value)) addTagsFrom(e.target, false);
+  });
+  $("tag-input").addEventListener("compositionend", (e) => {
+    if (TAG_SEP.test(e.target.value)) addTagsFrom(e.target, false);
+  });
+  $("tag-add").addEventListener("click", () => addTagsFrom($("tag-input"), true));
+
+  $("accept-input").addEventListener("keydown", (e) => {
+    if (e.isComposing || e.keyCode === 229 || e.key !== "Enter") return;
+    e.preventDefault();
+    addAcceptedFrom(e.target);
+  });
+  $("accept-add").addEventListener("click", () => addAcceptedFrom($("accept-input")));
+
+  // ---- 問題文: 複数行で見やすく表示しつつ、改行は入れさせない ----
+  function fitQuestion() {
+    const q = $("question");
+    if (/[\r\n]/.test(q.value)) q.value = q.value.replace(/[\r\n]+/g, "");
+    q.style.height = "auto";
+    q.style.height = `${q.scrollHeight}px`;
+  }
+  $("question").addEventListener("keydown", (e) => {
+    if (e.key === "Enter" && !e.isComposing && e.keyCode !== 229) e.preventDefault();
+  });
+  $("question").addEventListener("input", fitQuestion);
+
+  // ---- 作った問題の検索 ----
+  $("mine-search").addEventListener("input", renderMine);
 
   $("mine-genre").addEventListener("change", renderMine);
+  document.querySelectorAll("#rank-period button").forEach((b) => b.addEventListener("click", () => {
+    rankPeriod = b.dataset.period;
+    renderRanking();
+  }));
   $("quiz-form").addEventListener("submit", submit);
   $("quiz-form").addEventListener("reset", (e) => {
     e.preventDefault();

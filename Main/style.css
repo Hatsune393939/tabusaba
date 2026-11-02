@@ -191,3 +191,22 @@ pre.out { white-space: pre-wrap; word-break: break-all; font-size: .8rem; paddin
 .rating-bars .bar i { display: block; height: 100%; background: #f0c43c; border-radius: 999px; }
 .rating-bars .n { text-align: right; color: var(--muted); font-variant-numeric: tabular-nums; }
 .qitem .btn.rate[aria-expanded="true"] { border-color: var(--accent); }
+
+/* ランキングの期間切り替え */
+.card-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; margin-bottom: 14px; }
+.card-head h2 { margin: 0; font-size: 1.1rem; }
+.seg { display: inline-flex; background: var(--bg); border: 1px solid var(--line); border-radius: 999px; padding: 3px; gap: 2px; }
+.seg button { background: none; border: 0; color: var(--muted); font: inherit; font-size: .85rem; padding: 4px 12px; border-radius: 999px; cursor: pointer; }
+.seg button[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink); font-weight: 600; }
+
+/* タグ・受け付ける入力の「追加」ボタン */
+.add-row { display: flex; gap: 8px; align-items: stretch; }
+.add-row > .chips, .add-row > input { flex: 1; min-width: 0; }
+.add-row > .btn { flex: none; border-radius: 8px; }
+
+/* 問題文: 内容に合わせて高さが伸びる */
+#question { resize: none; overflow: hidden; min-height: 2.6em; line-height: 1.6; }
+
+/* 作った問題の検索 */
+.filter input[type=search] { flex: 1; min-width: 180px; font: inherit; color: var(--text); padding: 9px 12px; background: var(--bg); border: 1px solid var(--line); border-radius: 8px; }
+.filter input[type=search]:focus { border-color: var(--accent); outline: none; }

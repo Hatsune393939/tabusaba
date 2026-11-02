@@ -7,7 +7,7 @@
 <meta name="referrer" content="strict-origin-when-cross-origin">
 <title>早押しクイズ 問題作成｜たぶ鯖</title>
 <link rel="icon" type="image/png" href="../Main/icon.png">
-<link rel="stylesheet" href="../Main/style.css?v=2026110101">
+<link rel="stylesheet" href="../Main/style.css?v=2026110202">
 <script src="https://cdn.jsdelivr.net/npm/wanakana@5.3.1/wanakana.min.js" integrity="sha384-ei/skGdXfWHx8zodPeKIHWR7N4qSpIlj3wBwEPMPfw2MvsbEJSFrPMUCPXnEuKSw" crossorigin="anonymous"></script>
 <script src="../Main/config.js?v=2026110101"></script>
 <script src="../Main/site.js?v=2026103002" defer></script>
@@ -32,16 +32,25 @@
 
   <section id="view-mine" hidden>
     <div class="filter">
-      <label for="mine-genre">ジャンルで絞り込む</label>
-      <select id="mine-genre"><option value="">すべてのジャンル</option></select>
+      <input id="mine-search" type="search" placeholder="問題文・答え・タグで検索" aria-label="作った問題を検索" autocomplete="off" enterkeyhint="search">
+      <select id="mine-genre" aria-label="ジャンルで絞り込む"><option value="">すべてのジャンル</option></select>
     </div>
+    <p class="hint" id="mine-hit" style="margin:-4px 0 10px"></p>
     <div id="mine-list" class="qlist" aria-live="polite"></div>
   </section>
 
   <section id="view-stats" hidden>
     <div class="stat-cards" id="stats-cards"></div>
     <div class="card">
-      <h2>作成数ランキング</h2>
+      <div class="card-head">
+        <h2>作成数ランキング</h2>
+        <div class="seg" role="group" aria-label="期間" id="rank-period">
+          <button type="button" data-period="all" aria-pressed="true">全期間</button>
+          <button type="button" data-period="week" aria-pressed="false">今週</button>
+          <button type="button" data-period="today" aria-pressed="false">今日</button>
+        </div>
+      </div>
+      <p class="hint" id="rank-range" style="margin:-6px 0 10px"></p>
       <ol class="ranking" id="stats-ranking"></ol>
     </div>
     <div class="card">
@@ -72,13 +81,16 @@
 
       <div class="field">
         <label for="tag-input">タグ</label>
-        <div class="chips" id="tags"><input id="tag-input" type="text" placeholder="入力してEnter" autocomplete="off"></div>
-        <div class="hint">最大5つ。単語のみにしてください。</div>
+        <div class="add-row">
+          <div class="chips" id="tags"><input id="tag-input" type="text" placeholder="タグを入力" autocomplete="off" enterkeyhint="done"></div>
+          <button type="button" class="btn small" id="tag-add">追加</button>
+        </div>
+        <div class="hint">最大5つ。単語のみにしてください。Enter・「、」・スペースでも追加できます。</div>
       </div>
 
       <div class="field">
         <label for="question">問題文 <span class="count" id="q-count"></span></label>
-        <input id="question" type="text" required placeholder="例: 日本の首都はどこ？" autocomplete="off">
+        <textarea id="question" rows="2" required placeholder="例: 日本の首都はどこ？" autocomplete="off" enterkeyhint="done"></textarea>
         <div class="hint">早押しでは左から1文字ずつ表示されます。答えがわかる部分は、なるべく後ろに置くのがおすすめです。</div>
       </div>
     </section>
@@ -107,8 +119,11 @@
       <div class="field" style="margin-bottom:0">
         <span class="label">正解として受け付ける入力</span>
         <div class="chips" id="accepted"></div>
-        <div class="hint">点線は自動で作られたものです。おかしいものは×で消し、足りないものは下に入力してEnterで追加できます。</div>
-        <input id="accept-input" type="text" placeholder="受け付ける入力を追加" autocomplete="off" style="margin-top:8px">
+        <div class="hint">点線は自動で作られたものです。おかしいものは×で消し、足りないものは下に入力して追加できます。</div>
+        <div class="add-row" style="margin-top:8px">
+          <input id="accept-input" type="text" placeholder="受け付ける入力を追加" autocomplete="off" enterkeyhint="done">
+          <button type="button" class="btn small" id="accept-add">追加</button>
+        </div>
       </div>
     </section>
 
@@ -130,6 +145,6 @@
   </section>
   </div>
 </div>
-<script src="quiz.js?v=2026110101"></script>
+<script src="quiz.js?v=2026110202"></script>
 </body>
 </html>
