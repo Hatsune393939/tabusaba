@@ -567,11 +567,30 @@
       const fixText = Object.entries(FIX_LABELS).filter(([k]) => fixes[k]).map(([k, label]) => `${label}(${fixes[k]})`);
       if (fixText.length) {
         el.classList.add("needs-fix");
-        const b = document.createElement("span");
-        b.className = "badge fix";
-        b.textContent = `修正が必要: ${fixText.join("・")}`;
-        b.title = "ゲーム内で、ここを直した方がいいと言われています。編集して保存すると消えます。";
-        el.querySelector(".meta").prepend(b);
+        // 種類ごとに印を出し、× で外せるようにする(編集して保存しても全部外れる)
+        const wrap = document.createElement("span");
+        wrap.className = "fix-group";
+        const label = document.createElement("span");
+        label.className = "fix-label";
+        label.textContent = "修正が必要:";
+        label.title = "ゲーム内で、ここを直した方がいいと言われています。編集して保存すると消えます。";
+        wrap.appendChild(label);
+        for (const [k, name] of Object.entries(FIX_LABELS)) {
+          if (!fixes[k]) continue;
+          const chipEl = document.createElement("span");
+          chipEl.className = "badge fix";
+          chipEl.textContent = `${name}(${fixes[k]})`;
+          const x = document.createElement("button");
+          x.type = "button";
+          x.className = "fix-x";
+          x.textContent = "×";
+          x.title = `「${name}」の修正が必要を外す`;
+          x.setAttribute("aria-label", `「${name}」の修正が必要を外す`);
+          x.addEventListener("click", () => clearFix(quiz, k, name));
+          chipEl.appendChild(x);
+          wrap.appendChild(chipEl);
+        }
+        el.querySelector(".meta").prepend(wrap);
       }
       if (quiz.reported) {
         el.classList.add("reported");
@@ -639,6 +658,18 @@
       list.appendChild(li);
     }
     panel.appendChild(list);
+  }
+
+  // 「修正が必要」を1種類だけ外す
+  async function clearFix(quiz, kind, name) {
+    try {
+      await api(`/api/quizzes/${quiz.id}/fixes?kind=${encodeURIComponent(kind)}`, { method: "DELETE" });
+      if (quiz.fixRequests) delete quiz.fixRequests[kind];
+      renderMine();
+      toast(`問題 #${quiz.id} の「${name}」の修正が必要を外しました`);
+    } catch (e) {
+      toast(e.message);
+    }
   }
 
   async function removeQuiz(quiz) {
