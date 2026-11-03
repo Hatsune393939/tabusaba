@@ -3,56 +3,161 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; style-src-attr 'unsafe-inline'; img-src 'self'; connect-src 'self' https://api.github.com; base-uri 'none'; form-action 'none'; object-src 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' https://cdn.jsdelivr.net; style-src 'self'; style-src-attr 'unsafe-inline'; img-src 'self' https://minotar.net; connect-src 'self' https://tabusaba-api.wanchan0tabu.workers.dev https://api.github.com; base-uri 'none'; form-action 'none'; object-src 'none'">
 <meta name="referrer" content="strict-origin-when-cross-origin">
-<title>ミニゲームサーバー「たぶ鯖」</title>
-<meta name="description" content="実績の数が500以上もあるミニゲームサーバー「たぶ鯖」。早押しクイズの問題作成、実績一覧、Wikiはこちらから。">
-<link rel="icon" type="image/png" href="icon.png">
-<link rel="stylesheet" href="style.css?v=2026110301">
-<script src="config.js?v=2026110101"></script>
-<script src="site.js?v=2026103002" defer></script>
+<title>早押しクイズ大会 問題作成｜たぶ鯖</title>
+<link rel="icon" type="image/png" href="../Main/icon.png">
+<link rel="stylesheet" href="../Main/style.css?v=2026110302">
+<script src="https://cdn.jsdelivr.net/npm/wanakana@5.3.1/wanakana.min.js" integrity="sha384-ei/skGdXfWHx8zodPeKIHWR7N4qSpIlj3wBwEPMPfw2MvsbEJSFrPMUCPXnEuKSw" crossorigin="anonymous"></script>
+<script src="../Main/config.js?v=2026110101"></script>
+<script src="../Main/site.js?v=2026103002" defer></script>
 </head>
 <body>
-<main class="wrap">
-  <header class="hero">
-    <img class="pixel" src="icon.png" alt="たぶ鯖のアイコン" width="104" height="104">
-    <div>
-      <h1>ミニゲームサーバー「たぶ鯖」 <span class="ver" data-site="version"></span></h1>
-      <p class="lead">実績の数が500以上もあるミニゲームサーバー。</p>
-      <p class="updated">最終更新: <span data-site="updated" data-paths="Main">-</span></p>
-    </div>
-  </header>
+<div class="wrap">
+  <a class="back" href="../Main/"><img class="pixel" src="../Main/icon.png" alt="" width="22" height="22">たぶ鯖トップに戻る</a>
 
-  <nav class="menu" aria-label="メニュー">
-    <a href="../Quiz/">
-      <h2>早押しクイズ大会 問題作成</h2>
-      <p>早押しクイズ大会で出題される問題を作れます。ゲーム内で /mclink したDiscordアカウントでログインしてください。</p>
-    </a>
-    <a href="../Achievements/">
-      <h2>実績一覧</h2>
-      <p>各ミニゲームの実績と、その達成条件を確認できます。一部の実績は条件が秘密です。</p>
-    </a>
-    <a href="https://w.atwiki.jp/tabusaba/" target="_blank" rel="noopener">
-      <h2>Wiki</h2>
-      <p>ミニゲームのルールや遊び方、サーバーの情報をまとめています。</p>
-      <span class="ext">@wikiで開く ↗</span>
-    </a>
+  <div class="page-head">
+    <h1>早押しクイズ大会 問題作成 <span class="ver" data-site="version"></span></h1>
+    <p class="updated">最終更新: <span data-site="updated" data-paths="Quiz,Main">-</span></p>
+    <p class="lead">作った問題は早押しクイズ大会でそのまま出題されます。問題には作成者としてあなたのマイクラの名前が表示されます。</p>
+  </div>
+
+  <div id="login" class="card login" aria-live="polite"></div>
+
+  <nav class="tabs" id="tabs" role="tablist" aria-label="表示の切り替え">
+    <button type="button" role="tab" data-view="create" aria-selected="true">問題を作る</button>
+    <button type="button" role="tab" data-view="mine" aria-selected="false" id="tab-mine" hidden>作った問題 <span id="mine-count"></span></button>
+    <button type="button" role="tab" data-view="stats" aria-selected="false">みんなの統計</button>
   </nav>
 
-  <section class="server card" aria-labelledby="server-h">
-    <h2 id="server-h">サーバーに参加する</h2>
-    <dl>
-      <div>
-        <dt>サーバーアドレス</dt>
-        <dd><code data-site="ip"></code> <button type="button" class="btn small" id="copy-ip">コピー</button></dd>
+  <section id="view-mine" hidden>
+    <div class="filter">
+      <input id="mine-search" type="search" placeholder="問題文・答え・タグで検索" aria-label="作った問題を検索" autocomplete="off" enterkeyhint="search">
+      <select id="mine-genre" aria-label="ジャンルで絞り込む"><option value="">すべてのジャンル</option></select>
+    </div>
+    <div class="filter-row">
+      <div class="toggles" role="group" aria-label="絞り込み" id="mine-flags">
+        <button type="button" data-flag="rated" aria-pressed="false">評価あり</button>
+        <button type="button" data-flag="tagged" aria-pressed="false">タグあり</button>
+        <button type="button" data-flag="played" aria-pressed="false">出題あり</button>
+        <button type="button" data-flag="fix" aria-pressed="false">修正が必要</button>
       </div>
-      <div>
-        <dt>対応バージョン</dt>
-        <dd data-site="versions"></dd>
+      <div class="seg" role="group" aria-label="表示のしかた" id="mine-view">
+        <button type="button" data-view-mode="list" aria-pressed="true">リスト</button>
+        <button type="button" data-view-mode="gallery" aria-pressed="false">ギャラリー</button>
       </div>
-    </dl>
+    </div>
+    <p class="hint" id="mine-hit" style="margin:0 0 10px"></p>
+    <div id="mine-list" class="qlist" aria-live="polite"></div>
   </section>
-</main>
-<footer class="wrap">たぶ鯖は Minecraft の非公式サーバーです。Mojang Studios とは関係ありません。</footer>
+
+  <section id="view-stats" hidden>
+    <div class="stat-cards" id="stats-cards"></div>
+    <div class="card">
+      <div class="card-head">
+        <h2>作成数ランキング</h2>
+        <div class="seg" role="group" aria-label="期間" id="rank-period">
+          <button type="button" data-period="all" aria-pressed="true">全期間</button>
+          <button type="button" data-period="week" aria-pressed="false">今週</button>
+          <button type="button" data-period="today" aria-pressed="false">今日</button>
+        </div>
+      </div>
+      <p class="hint" id="rank-range" style="margin:-6px 0 10px"></p>
+      <ol class="ranking" id="stats-ranking"></ol>
+    </div>
+    <div class="card">
+      <h2>ジャンル別の問題数</h2>
+      <ul class="genre-bars" id="stats-genres"></ul>
+    </div>
+    <div class="card">
+      <h2>タグ一覧</h2>
+      <p class="hint" style="margin:-6px 0 12px">問題に付けられたタグと、そのタグが付いた問題の数です。</p>
+      <div class="taglist" id="stats-tags"></div>
+    </div>
+    <p class="hint" id="stats-note" style="margin-bottom:56px"></p>
+  </section>
+
+  <div id="view-create">
+  <div id="edit-banner" class="notice" hidden>
+    <span id="edit-text"></span>
+    <button type="button" class="btn small" id="cancel-edit">編集をやめる</button>
+  </div>
+  <form id="quiz-form" novalidate>
+    <section class="card">
+      <h2>問題</h2>
+
+      <div class="field">
+        <label for="genre">ジャンル</label>
+        <select id="genre" required><option value="">選んでください</option></select>
+      </div>
+
+      <div class="field">
+        <label for="tag-input">タグ</label>
+        <div class="add-row">
+          <div class="chips" id="tags"><input id="tag-input" type="text" placeholder="タグを入力" autocomplete="off" enterkeyhint="done"></div>
+          <button type="button" class="btn small" id="tag-add">追加</button>
+        </div>
+        <div class="hint">最大5つ。単語のみにしてください。Enter・「、」・スペースでも追加できます。</div>
+      </div>
+
+      <div class="field">
+        <label for="question">問題文 <span class="count" id="q-count"></span></label>
+        <textarea id="question" rows="2" required placeholder="例: 日本の首都はどこ？" autocomplete="off" enterkeyhint="done"></textarea>
+        <div class="hint">早押しでは左から1文字ずつ表示されます。答えがわかる部分は、なるべく後ろに置くのがおすすめです。</div>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>正解</h2>
+      <div class="row">
+        <div class="field">
+          <label for="ans-display">正解(漢字など)</label>
+          <input id="ans-display" type="text" placeholder="例: 東京" autocomplete="off">
+          <div class="hint">英語や数字の答えはそのまま書いてください。</div>
+        </div>
+        <div class="field">
+          <label for="ans-reading">読み(ひらがな)</label>
+          <input id="ans-reading" type="text" placeholder="例: とうきょう" autocomplete="off">
+          <div class="hint">ローマ字で打つとひらがなになります。</div>
+        </div>
+      </div>
+
+      <div class="field">
+        <span class="label">別解</span>
+        <div class="alt-list" id="alts"></div>
+        <button type="button" class="btn small" id="add-alt" style="margin-top:8px">別解を追加</button>
+      </div>
+
+      <div class="field" style="margin-bottom:0">
+        <span class="label">正解として受け付ける入力</span>
+        <div class="chips" id="accepted"></div>
+        <div class="hint">点線は自動で作られたものです。おかしいものは×で消し、足りないものは下に入力して追加できます。</div>
+        <div class="add-row" style="margin-top:8px">
+          <input id="accept-input" type="text" placeholder="受け付ける入力を追加" autocomplete="off" enterkeyhint="done">
+          <button type="button" class="btn small" id="accept-add">追加</button>
+        </div>
+      </div>
+    </section>
+
+    <div id="form-error" class="error" role="alert"></div>
+    <div class="actions">
+      <button type="submit" class="btn primary" id="submit-btn">問題を投稿</button>
+      <button type="reset" class="btn">入力をすべて消す</button>
+    </div>
+  </form>
+
+  <section id="result" class="card" hidden>
+    <h2 id="result-title"></h2>
+    <p id="result-text"></p>
+    <pre class="out" id="result-json" hidden></pre>
+    <div style="margin-top:12px; display:flex; gap:8px; flex-wrap:wrap">
+      <button type="button" class="btn small" id="new-btn">続けて作る</button>
+      <button type="button" class="btn small" id="to-mine-btn" hidden>作った問題を見る</button>
+    </div>
+  </section>
+  </div>
+</div>
+<div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
+<script src="quiz.js?v=2026110302"></script>
 </body>
 </html>
