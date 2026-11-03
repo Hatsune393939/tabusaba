@@ -5,9 +5,9 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' https://cdn.jsdelivr.net; style-src 'self'; style-src-attr 'unsafe-inline'; img-src 'self' https://minotar.net; connect-src 'self' https://tabusaba-api.wanchan0tabu.workers.dev https://api.github.com; base-uri 'none'; form-action 'none'; object-src 'none'">
 <meta name="referrer" content="strict-origin-when-cross-origin">
-<title>早押しクイズ 問題作成｜たぶ鯖</title>
+<title>早押しクイズ大会 問題作成｜たぶ鯖</title>
 <link rel="icon" type="image/png" href="../Main/icon.png">
-<link rel="stylesheet" href="../Main/style.css?v=2026110202">
+<link rel="stylesheet" href="../Main/style.css?v=2026110301">
 <script src="https://cdn.jsdelivr.net/npm/wanakana@5.3.1/wanakana.min.js" integrity="sha384-ei/skGdXfWHx8zodPeKIHWR7N4qSpIlj3wBwEPMPfw2MvsbEJSFrPMUCPXnEuKSw" crossorigin="anonymous"></script>
 <script src="../Main/config.js?v=2026110101"></script>
 <script src="../Main/site.js?v=2026103002" defer></script>
@@ -17,7 +17,7 @@
   <a class="back" href="../Main/"><img class="pixel" src="../Main/icon.png" alt="" width="22" height="22">たぶ鯖トップに戻る</a>
 
   <div class="page-head">
-    <h1>早押しクイズ 問題作成 <span class="ver" data-site="version"></span></h1>
+    <h1>早押しクイズ大会 問題作成 <span class="ver" data-site="version"></span></h1>
     <p class="updated">最終更新: <span data-site="updated" data-paths="Quiz,Main">-</span></p>
     <p class="lead">作った問題は早押しクイズ大会でそのまま出題されます。問題には作成者としてあなたのマイクラの名前が表示されます。</p>
   </div>
@@ -35,7 +35,19 @@
       <input id="mine-search" type="search" placeholder="問題文・答え・タグで検索" aria-label="作った問題を検索" autocomplete="off" enterkeyhint="search">
       <select id="mine-genre" aria-label="ジャンルで絞り込む"><option value="">すべてのジャンル</option></select>
     </div>
-    <p class="hint" id="mine-hit" style="margin:-4px 0 10px"></p>
+    <div class="filter-row">
+      <div class="toggles" role="group" aria-label="絞り込み" id="mine-flags">
+        <button type="button" data-flag="rated" aria-pressed="false">評価あり</button>
+        <button type="button" data-flag="tagged" aria-pressed="false">タグあり</button>
+        <button type="button" data-flag="played" aria-pressed="false">出題あり</button>
+        <button type="button" data-flag="fix" aria-pressed="false">修正が必要</button>
+      </div>
+      <div class="seg" role="group" aria-label="表示のしかた" id="mine-view">
+        <button type="button" data-view-mode="list" aria-pressed="true">リスト</button>
+        <button type="button" data-view-mode="gallery" aria-pressed="false">ギャラリー</button>
+      </div>
+    </div>
+    <p class="hint" id="mine-hit" style="margin:0 0 10px"></p>
     <div id="mine-list" class="qlist" aria-live="polite"></div>
   </section>
 
@@ -145,6 +157,7 @@
   </section>
   </div>
 </div>
-<script src="quiz.js?v=2026110202"></script>
+<div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
+<script src="quiz.js?v=2026110301"></script>
 </body>
 </html>

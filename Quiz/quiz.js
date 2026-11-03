@@ -15,6 +15,7 @@
     manualAccepted: [],     // 自分で追加した受理表記
     removedAuto: new Set(), // 自動生成から消した受理表記
     editingId: null,        // 編集中の問題のID
+    mineFlags: new Set(),   // 作った問題の絞り込み(rated / tagged / played / fix)
     mine: []                // 自分が作った問題
   };
 
@@ -354,20 +355,57 @@
     btn.disabled = true; btn.textContent = "送信中…";
     try {
       if (state.editingId) {
-        await api(`/api/quizzes/${state.editingId}`, { method: "PUT", body: JSON.stringify(data) });
-        state.editingId = null;
-        showResult("変更を保存しました", "次の早押しクイズ大会から、変更後の内容で出題されます。");
+        // 編集したら「作った問題」に移って、直した問題を見せる
+        const id = state.editingId;
+        await api(`/api/quizzes/${id}`, { method: "PUT", body: JSON.stringify(data) });
+        cancelEdit();
+        await loadMine();
+        showView("mine");
+        toast(`問題 #${id} の変更を保存しました`);
+        focusQuiz(id);
       } else {
-        await api("/api/quizzes", { method: "POST", body: JSON.stringify(data) });
-        showResult("問題を投稿しました", "次の早押しクイズ大会から出題されるようになります。");
+        // 投稿したら、続けて作れるように空の「問題を作る」に戻る
+        const res = await api("/api/quizzes", { method: "POST", body: JSON.stringify(data) });
+        clearForm();
+        showView("create");
+        window.scrollTo(0, 0);
+        toast(`問題を投稿しました${res && res.id ? `(#${res.id})` : ""}。続けて作れます`);
         refreshQuota();
+        loadMine();
       }
-      loadMine();
     } catch (ex) {
       $("form-error").textContent = ex.message || "サーバーに接続できませんでした。";
     } finally {
       btn.disabled = !state.user; btn.textContent = label;
     }
+  }
+
+  // ---- 画面下に短いお知らせを出す ----
+  let toastTimer = null;
+  function toast(text) {
+    const el = $("toast");
+    el.textContent = text;
+    el.hidden = false;
+    el.classList.remove("show");
+    void el.offsetWidth;   // アニメーションをやり直す
+    el.classList.add("show");
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => { el.classList.remove("show"); el.hidden = true; }, 3500);
+  }
+
+  // 作った問題の一覧で、その問題までスクロールして目立たせる
+  function focusQuiz(id) {
+    // 絞り込みで隠れていたら外す
+    const card = () => document.querySelector(`.qitem[data-id="${id}"]`);
+    if (!card()) {
+      $("mine-search").value = ""; $("mine-genre").value = "";
+      state.mineFlags.clear(); syncMineControls(); renderMine();
+    }
+    const el = card();
+    if (!el) return;
+    el.scrollIntoView({ block: "center", behavior: "smooth" });
+    el.classList.add("flash");
+    setTimeout(() => el.classList.remove("flash"), 2000);
   }
 
   // ---- フォームを空にする / 問題を読み込む ----
@@ -418,6 +456,17 @@
   }
 
   // ---- 作った問題 ----
+  const FIX_LABELS = { question: "問題文", answer: "答え", alternatives: "別解", tags: "タグ" };
+  const VIEW_KEY = "tabusaba_mine_view";
+  function getMineView() { try { return localStorage.getItem(VIEW_KEY) === "gallery" ? "gallery" : "list"; } catch (e) { return "list"; } }
+  function setMineView(v) { try { localStorage.setItem(VIEW_KEY, v); } catch (e) { /* 保存できなくても表示は切り替える */ } }
+  function syncMineControls() {
+    document.querySelectorAll("#mine-flags button").forEach((b) => b.setAttribute("aria-pressed", String(state.mineFlags.has(b.dataset.flag))));
+    const view = getMineView();
+    document.querySelectorAll("#mine-view button").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.viewMode === view)));
+    $("mine-list").classList.toggle("gallery", view === "gallery");
+  }
+
   async function loadMine() {
     if (!state.user) return;
     try {
@@ -469,8 +518,14 @@
       ...q.alternatives.flatMap((a) => [a.display, a.reading]),
       ...q.tags, ...q.accepted
     ].join(" "));
-    const shown = state.mine.filter((q) => (!genre || q.genre === genre) && words.every((w) => haystack(q).includes(w)));
-    $("mine-hit").textContent = (genre || words.length) ? `${shown.length}件 / 全${state.mine.length}件` : "";
+    const f = state.mineFlags;
+    const flagOk = (q) =>
+      (!f.has("rated") || q.ratingCount > 0) &&
+      (!f.has("tagged") || q.tags.length > 0) &&
+      (!f.has("played") || q.playCount > 0) &&
+      (!f.has("fix") || Object.keys(q.fixRequests || {}).length > 0);
+    const shown = state.mine.filter((q) => (!genre || q.genre === genre) && flagOk(q) && words.every((w) => haystack(q).includes(w)));
+    $("mine-hit").textContent = (genre || words.length || f.size) ? `${shown.length}件 / 全${state.mine.length}件` : "";
     if (!shown.length) {
       const p = document.createElement("p");
       p.className = "empty";
@@ -480,6 +535,7 @@
     for (const quiz of shown) {
       const el = document.createElement("article");
       el.className = "qitem";
+      el.dataset.id = quiz.id;
       el.innerHTML = `
         <div class="meta"><span class="badge genre"></span><span class="tags"></span></div>
         <div class="q"></div>
@@ -507,6 +563,16 @@
       const stats = el.querySelector(".stats");
       const rate = quiz.playCount ? `正答率 ${Math.round((quiz.correctCount / quiz.playCount) * 100)}%` : null;
       const stars = quiz.ratingCount ? `★ ${Number(quiz.ratingAvg).toFixed(1)}(${quiz.ratingCount}件)` : null;
+      const fixes = quiz.fixRequests || {};
+      const fixText = Object.entries(FIX_LABELS).filter(([k]) => fixes[k]).map(([k, label]) => `${label}(${fixes[k]})`);
+      if (fixText.length) {
+        el.classList.add("needs-fix");
+        const b = document.createElement("span");
+        b.className = "badge fix";
+        b.textContent = `修正が必要: ${fixText.join("・")}`;
+        b.title = "ゲーム内で、ここを直した方がいいと言われています。編集して保存すると消えます。";
+        el.querySelector(".meta").prepend(b);
+      }
       if (quiz.reported) {
         el.classList.add("reported");
         const b = document.createElement("span");
@@ -804,6 +870,15 @@
   $("mine-search").addEventListener("input", renderMine);
 
   $("mine-genre").addEventListener("change", renderMine);
+  document.querySelectorAll("#mine-flags button").forEach((b) => b.addEventListener("click", () => {
+    const k = b.dataset.flag;
+    if (state.mineFlags.has(k)) state.mineFlags.delete(k); else state.mineFlags.add(k);
+    syncMineControls(); renderMine();
+  }));
+  document.querySelectorAll("#mine-view button").forEach((b) => b.addEventListener("click", () => {
+    setMineView(b.dataset.viewMode); syncMineControls();
+  }));
+  syncMineControls();
   document.querySelectorAll("#rank-period button").forEach((b) => b.addEventListener("click", () => {
     rankPeriod = b.dataset.period;
     renderRanking();
